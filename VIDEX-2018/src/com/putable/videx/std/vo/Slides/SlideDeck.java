@@ -5,6 +5,7 @@ import javax.swing.text.html.StyleSheet;
 
 import com.putable.videx.core.EventAwareVO;
 import com.putable.videx.core.VOGraphics2D;
+import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.Stage;
 
@@ -38,6 +39,11 @@ public class SlideDeck extends EventAwareVO {
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
         // SlideDeck is currently invisible but that might change
+    }
+
+    @Override
+    public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
+        throw new UnsupportedOperationException("XXX WRITE ME");
     }
 
 }
