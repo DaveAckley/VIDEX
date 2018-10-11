@@ -18,7 +18,12 @@ import com.putable.videx.std.vo.StageVO;
 public class OIOLoadConfiguration extends AbstractConfiguration {
     private final OIOLoad mLoader;
 
+    public OIOLoad getLoader() {
+        return mLoader;
+    }
+    
     public OIOLoadConfiguration(OIOLoad oio) {
+        if (oio==null) throw new IllegalArgumentException();
         mLoader = oio;
     }
     
@@ -59,14 +64,19 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
             return true;
         }
 
+        public OIOLoadConfiguration getConfiguration() {
+            return mConfig;
+        }
+        
         public OIOLoadStage(World world, OIOLoadConfiguration config) {
             super(world, config);
             mConfig = config;
+            mRoot = new StageVO(world);
         }
 
         private static final long serialVersionUID = 1L;
 
-        private StageVO mRoot = new StageVO();
+        private StageVO mRoot;
 
         @Override
         public void updateStage(World world) {

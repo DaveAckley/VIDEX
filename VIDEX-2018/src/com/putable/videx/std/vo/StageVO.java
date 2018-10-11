@@ -10,10 +10,16 @@ import com.putable.videx.core.events.MouseEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
 import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
+import com.putable.videx.interfaces.World;
 
 public class StageVO extends StandardVO {
     private MouseVO mMouseVO = new MouseVO();
-
+    private final World mWorld;
+    
+    public World getWorld() {
+        return mWorld;
+    }
+    
     public MouseVO getMouseVO() {
         return mMouseVO;
     }
@@ -33,7 +39,9 @@ public class StageVO extends StandardVO {
         return true;
     }
 
-    public StageVO() {
+    public StageVO(World w) {
+        if (w == null) throw new IllegalArgumentException();
+        mWorld = w;
     }
 
     @Override

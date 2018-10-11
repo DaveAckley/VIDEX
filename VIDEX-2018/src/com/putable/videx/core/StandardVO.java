@@ -16,6 +16,7 @@ import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
 import com.putable.videx.interfaces.World;
+import com.putable.videx.std.vo.StageVO;
 
 public abstract class StandardVO implements VO {
     /**
@@ -24,20 +25,33 @@ public abstract class StandardVO implements VO {
      */
     private int mOnum = -1;
 
-    //public abstract void writeOIOMembers(Writer w);
+    /**
+     * Get the world from the nearest parental stage, if any
+     * 
+     * @return The world, if it is found, else null (if we run out of parents
+     *         first, for whatever reason.)
+     */
+    public World getWorld() {
+        VO p = this;
+        while (p != null) {
+            if (p instanceof StageVO) {
+                StageVO s = (StageVO) p;
+                return s.getWorld();
+            }
+            p = p.getParent();
+        }
+        return null;
+    }
+
+    // public abstract void writeOIOMembers(Writer w);
 
     /*
-    @Override
-    public void writeOIO(Writer w, OIOAbleGlobalMap refs) throws IOException {
-        if (this.getOnum() <= 0)
-            throw new IllegalStateException();
-        w.write(String.format("\n#%d:%s {\n", this.getOnum(),
-                this.getClass().getName()));
-        this.writeOIOStandardMembers(w,refs);
-        this.writeOIOMembers(w,refs);
-        w.write("}\n");
-    }
-*/
+     * @Override public void writeOIO(Writer w, OIOAbleGlobalMap refs) throws
+     * IOException { if (this.getOnum() <= 0) throw new IllegalStateException();
+     * w.write(String.format("\n#%d:%s {\n", this.getOnum(),
+     * this.getClass().getName())); this.writeOIOStandardMembers(w,refs);
+     * this.writeOIOMembers(w,refs); w.write("}\n"); }
+     */
     @Override
     public int getOnum() {
         return mOnum;
@@ -94,13 +108,15 @@ public abstract class StandardVO implements VO {
         mRiders.add(rider);
         return true;
     }
-    
-    public Iterable<Rider> getRiders() { return mRiders; } 
+
+    public Iterable<Rider> getRiders() {
+        return mRiders;
+    }
 
     /**
      * The parent of this VO, set when this VO is added to parent's mVO
      */
-    @OIO(owned=false)
+    @OIO(owned = false)
     private VO mParent = null;
 
     /**
@@ -178,11 +194,11 @@ public abstract class StandardVO implements VO {
         mParent = vo;
     }
 
-    @Override 
+    @Override
     public void clearParent() {
         mParent = null;
     }
-    
+
     @Override
     public Point2D mapVOCToPixel(Point2D inVOC, Point2D outPixel) {
         return this.mVOCToPixelAT.transform(inVOC, outPixel);
@@ -329,7 +345,7 @@ public abstract class StandardVO implements VO {
         for (Iterator<VO> iterator = mVO.iterator(); iterator.hasNext();) {
             VO vo = iterator.next();
             if (!vo.isAlive()) {
-                // no way to clear parent link at present.  vo.setParent(null);
+                // no way to clear parent link at present. vo.setParent(null);
                 iterator.remove(); // Reap VOs known dead by this time
             } else
                 vo.updateVO(s);

@@ -13,12 +13,16 @@ import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.core.oio.OIOException;
-import com.putable.videx.core.oio.load.GlobalOnumMap;
+import com.putable.videx.core.oio.save.OIOLoad;
 import com.putable.videx.core.oio.save.OIOSave;
+import com.putable.videx.drivers.OIOLoadConfiguration;
+import com.putable.videx.interfaces.Configuration;
+import com.putable.videx.interfaces.OIOAbleGlobalMap;
 import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.SlideDeck;
 import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
+import com.putable.videx.interfaces.World;
 import com.putable.videx.std.riders.SOSIPoseRider;
 
 public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
@@ -71,7 +75,14 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
     private boolean checkpointSave() {
         File dir = new File(this.mOIOBaseDir);
         File realbase = dir.getParentFile();
-        GlobalOnumMap map = new GlobalOnumMap();
+        World w = this.getWorld();
+        if (w == null) throw new IllegalStateException();
+        Configuration c = w.getConfiguration();
+        if (!(c instanceof OIOLoadConfiguration))
+            throw new IllegalStateException("DAVE IS A LOSER");
+        OIOLoadConfiguration oc = (OIOLoadConfiguration) c; 
+        OIOLoad loader = oc.getLoader();
+        OIOAbleGlobalMap map = loader.getMap();
         OIOSave os = new OIOSave(realbase.toString());
         VO holdParent = this.getParent();
         this.clearParent();

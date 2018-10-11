@@ -15,6 +15,12 @@ import com.putable.videx.std.vo.StageVO;
 public interface Stage {
 
     /**
+     * Get the World this Stage is associated with
+     * @return the World
+     */
+    World getWorld();
+    
+    /**
      * Do all one-time initialization of this Stage
      */
     void initStage();

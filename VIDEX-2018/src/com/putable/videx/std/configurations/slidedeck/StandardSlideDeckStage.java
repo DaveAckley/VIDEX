@@ -12,11 +12,12 @@ public class StandardSlideDeckStage extends AbstractJFrameStage {
 
     public StandardSlideDeckStage(World world, Configuration config) {
         super(world, config);
+        mRoot = new StageVO(world);
     }
 
     private static final long serialVersionUID = 1L;
 
-    private StageVO mRoot = new StageVO();
+    private StageVO mRoot;
 
     private void loadSlideDeck() {
         String[] args = this.getConfiguration().theArguments(null);

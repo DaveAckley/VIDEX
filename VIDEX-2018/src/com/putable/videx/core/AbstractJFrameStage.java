@@ -25,7 +25,10 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
     private final Hitmap mHitmap;
     
     public Configuration getConfiguration() { return mConfig; }
+
+    @Override
     public World getWorld() { return mWorld; }
+
     @Override
     public Hitmap getHitmap() { return mHitmap; }
 

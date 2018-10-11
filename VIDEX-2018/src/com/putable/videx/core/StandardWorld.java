@@ -21,6 +21,7 @@ public abstract class StandardWorld implements World, ActionListener {
     
     private List<Stage> mStages = new LinkedList<Stage>();
     private SXRandom mRandom = new SXRandom();
+    private final Configuration mConfig;
     
     @Override
     public SXRandom getRandom() {
@@ -49,7 +50,13 @@ public abstract class StandardWorld implements World, ActionListener {
         return null;
     }
 
+    @Override
+    public Configuration getConfiguration() {
+        return mConfig;
+    }
+    
     public StandardWorld(Configuration config) {
+        this.mConfig = config;
         this.mFramesPerSecondTarget = config.getFPS();
         if (this.mFramesPerSecondTarget < 0) this.mFramesPerSecondTarget = 0;
     }

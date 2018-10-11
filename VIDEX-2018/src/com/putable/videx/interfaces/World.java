@@ -3,7 +3,7 @@ package com.putable.videx.interfaces;
 import com.putable.videx.core.SXRandom;
 
 /**
- * A World is the object build from a Configuration
+ * A World is the object built from a Configuration
  * 
  * @author ackley
  *
@@ -18,4 +18,6 @@ public interface World extends Iterable<Stage> {
     void runWorld();
 
     SXRandom getRandom();
+    
+    Configuration getConfiguration();
 }
