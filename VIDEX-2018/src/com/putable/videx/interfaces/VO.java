@@ -13,7 +13,7 @@ import com.putable.videx.core.events.MouseEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
 
 /**
- * Interface of all Visualization Objects in VIDEX
+ * Interface of all Visualization Objects in VIDEX.  Iterable to get its kids.
  * 
  * @author ackley
  * 
