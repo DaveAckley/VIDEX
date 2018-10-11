@@ -126,9 +126,9 @@ public class BasicSlide extends EventAwareVO implements Slide {
         mText.setVerticalAlignment(SwingConstants.TOP);
         mText.setForeground(this.getForeground());
         mText.setBackground(this.getBackground());
-        mText.setFont(this.mFont);
+// setFont on mText vvvvvvv kills drawing speed!  And doesn't seem to matter...
+//        mText.setFont(this.mFont);
         mText.paint(g2d);
-        //System.out.println("BASICLSZ "+mText.getSize());
         g2d.translate(-mOrigin.getX(), -mOrigin.getY());
         g2d.setFont(oldfont);
     }
