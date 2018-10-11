@@ -12,7 +12,7 @@ import com.putable.videx.interfaces.VO;
 
 public class MouseVO extends StandardVO implements VO {
     private Point2D mMousePoint = new Point2D.Float();
-    public static final int UPDATES_UNTIL_HIDING = 200;
+    public static final int UPDATES_UNTIL_HIDING = 50;
     private int mHideTimer = UPDATES_UNTIL_HIDING;
 
     public MouseVO() {
