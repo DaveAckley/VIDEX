@@ -34,7 +34,7 @@ public abstract class EventAwareVO extends StandardVO {
     private Point2D mDragStartVOC = new Point2D.Float(); // Initial mouse
                                                          // press location in
                                                          // Stage pixels
-    
+
     @OIO
     private boolean mFocusAwarenessEnabled = false;
 
@@ -97,10 +97,11 @@ public abstract class EventAwareVO extends StandardVO {
                 return;
             }
             Point2D dragNowVOC = this.mapPixelToVOCOrDie(at);
-            Point2D delta = 
-                    new Point2D.Double(
-                            dragNowVOC.getX() - mDragStartVOC.getX() + this.getPose().getOAX(),
-                            dragNowVOC.getY() - mDragStartVOC.getY() + this.getPose().getOAY());
+            Point2D delta = new Point2D.Double(
+                    dragNowVOC.getX() - mDragStartVOC.getX()
+                            + this.getPose().getOAX(),
+                    dragNowVOC.getY() - mDragStartVOC.getY()
+                            + this.getPose().getOAY());
             AffineTransform toPar = this.getVOCToParentVOCTransform(null);
             Point2D deltaParentVOC = null;
             deltaParentVOC = toPar.transform(delta, null);
@@ -118,7 +119,7 @@ public abstract class EventAwareVO extends StandardVO {
         this.moveAnchorTo(rotatePointVOC);
 
         double rot = this.getPose().getR();
-        final double ROT_SCALE = Math.PI/32.0;
+        final double ROT_SCALE = Math.PI / 32.0;
         rot += ROT_SCALE * amount;
         this.getPose().setR((float) rot);
         this.updatePoseTransform();
@@ -161,8 +162,8 @@ public abstract class EventAwareVO extends StandardVO {
         this.getPose().setSX((float) scalex);
         this.getPose().setSY((float) scaley);
         this.updatePoseTransform();
-        System.out.printf("ZANG %f -> *%f,%f\n", amount,
-                this.getPose().getSX(), this.getPose().getSY());
+//        System.out.printf("ZANG %f -> *%f,%f\n", amount, this.getPose().getSX(),
+//                this.getPose().getSY());
         return true;
     }
 
@@ -177,12 +178,21 @@ public abstract class EventAwareVO extends StandardVO {
         return false;
     }
 
-    public abstract boolean handleKeyboardEventHere(KeyboardEventInfo kei) ;
-    
+    /**
+     * Perhaps handle keyboard event described by kei
+     * 
+     * @param kei
+     *            The in-progress keyboard event
+     * @return true iff the event has now been handled and propagation should
+     *         stop, false otherwise
+     */
+    public abstract boolean handleKeyboardEventHere(KeyboardEventInfo kei);
+
     @Override
     public boolean handleKeyboardEvent(KeyboardEventInfo kei) {
         for (VO kid : this) {
-            if (kid.handleKeyboardEvent(kei)) return true;
+            if (kid.handleKeyboardEvent(kei))
+                return true;
         }
         return isFocusAware() && handleKeyboardEventHere(kei);
     }
