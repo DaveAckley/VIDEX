@@ -23,6 +23,15 @@ public class BasicSlideRider extends SOSIPoseRider implements SlideRider {
     @OIO
     private int mLastCurrentNum = -1;
     
+    /**
+     * Compute the destination for this slide given that the presentation is 
+     * currently on slide# currentNum, and this is slide# yourNum of totalSlides
+     * @param sd the deck
+     * @param currentNum the slide we're showing
+     * @param yourNum this slide's number
+     * @param totalSlides the size of the deck
+     * @return the Pose that this slide should be SOSIPoseRiding toward
+     */
     public Pose getDestination(SlideDeck sd, int currentNum, int yourNum,
             int totalSlides) {
         Pose dest = new Pose();
