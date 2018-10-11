@@ -51,12 +51,9 @@ public class SOSIPoseRider extends StandardRider {
         if (steps >= mMaxStep)
             return 1.0;
         double frac = (double) steps / mMaxStep;
-        return 1 / (1
+        double nonlin = 1 / (1
                 + Math.pow(Math.E, -mWidth * (2 * frac - 1) / mTemperature));
-    }
-
-    private double interp(double frac, double from, double to) {
-        return frac * to + (1 - frac) * from;
+        return nonlin;
     }
 
     @OIO(owned = false)
@@ -78,8 +75,9 @@ public class SOSIPoseRider extends StandardRider {
 
     @Override
     public int react(VO vo) {
-        if (vo != mVehicle)
+        if (vo != mVehicle) {
             return REACT_REAWAKEN;
+        }
         if (mCurrentStep > mMaxStep + 1) {
             if (mDieOnComplete)
                 return REACT_DIE;
@@ -90,15 +88,8 @@ public class SOSIPoseRider extends StandardRider {
 
     @Override
     public void act() {
-        double d = this.getTraveledFraction(mCurrentStep);
-        Pose p = mVehicle.getPose();
-        p.setPAX(interp(d, mFrom.getPAX(), mTo.getPAX()));
-        p.setPAY(interp(d, mFrom.getPAY(), mTo.getPAY()));
-        p.setR(interp(d, mFrom.getR(), mTo.getR()));
-        p.setSX(interp(d, mFrom.getSX(), mTo.getSX()));
-        p.setSY(interp(d, mFrom.getSY(), mTo.getSY()));
-        p.setOAX(interp(d, mFrom.getOAX(), mTo.getOAX()));
-        p.setOAY(interp(d, mFrom.getOAY(), mTo.getOAY()));
+        double fracdone = this.getTraveledFraction(mCurrentStep);
+        mVehicle.getPose().interpolate(mFrom, mTo, fracdone);
         ++mCurrentStep;
     }
 
