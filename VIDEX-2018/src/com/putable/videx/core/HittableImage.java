@@ -3,6 +3,7 @@ package com.putable.videx.core;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 
@@ -35,6 +36,18 @@ public class HittableImage {
         }
     }
     
+    public void setImageFromBytesIfPossible(String sourceLabel, byte[] bytes) {
+        try {
+            mImage = ImageIO.read(new ByteArrayInputStream(bytes));
+        }
+        catch (IOException e) {
+            mImage = new BufferedImage(500,100,BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = mImage.createGraphics();
+            g2d.drawString("IMAGE DATA READ FAILED FOR: "+sourceLabel, 10, 10);
+        }
+        mHitmapImage = null; // Force rebuild
+        
+    }
     public void setImageFromPathIfPossible(String path) {
         try {
             mImage = ImageIO.read(new File(path));

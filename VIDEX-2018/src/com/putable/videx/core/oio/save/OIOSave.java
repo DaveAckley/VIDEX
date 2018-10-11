@@ -3,8 +3,10 @@ package com.putable.videx.core.oio.save;
 import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.BufferedWriter;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Writer;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
@@ -23,7 +25,6 @@ import com.putable.videx.core.oio.OIOTop;
 import com.putable.videx.core.oio.OIOValue;
 import com.putable.videx.core.oio.OIOValueExternalizer;
 import com.putable.videx.core.oio.OIOValues;
-import com.putable.videx.core.oio.load.GlobalOnumMap;
 import com.putable.videx.core.oio.load.Token;
 import com.putable.videx.interfaces.OIOAble;
 import com.putable.videx.interfaces.OIOAbleGlobalMap;
@@ -123,12 +124,24 @@ public class OIOSave {
         w.close();
     }
 
-    private void writeOutOfLine(OIOAble oio, String extension, String content)
+    private void writeOutOfLineString(OIOAble oio, String extension, String content)
             throws IOException {
         Path mainPath = getPathWithExtension(oio, extension);
         Writer w = new BufferedWriter(new FileWriter(mainPath.toString()));
         w.write(content);
         w.close();
+    }
+
+    private void writeOutOfLineBytes(OIOAble oio, String extension, byte[] content)
+            throws IOException {
+        Path mainPath = getPathWithExtension(oio, extension);
+        OutputStream os = new FileOutputStream(mainPath.toString());
+        try { 
+            os.write(content);
+        } 
+        finally {
+            os.close();
+        }
     }
 
     public void saveOwned(OIOAble oio, OIOAbleGlobalMap map)
@@ -193,7 +206,18 @@ public class OIOSave {
                                 else if (extension.startsWith("."))
                                     extension = extension.substring(1,
                                             extension.length());
-                                writeOutOfLine(object, extension, "" + val);
+                                Class<?> ftype = field.getType();
+                                if (ftype == byte[].class) {
+                                    writeOutOfLineBytes(object, extension,
+                                            (byte[]) val);
+                                } else if (ftype == String.class) {
+                                    writeOutOfLineString(object, extension,
+                                            (String) val);
+                                } else
+                                    throw new IllegalStateException(
+                                            "Unrecognized @OIO(inline=false) member type: "
+                                                    + ftype + " for " + field);
+
                             }
                         }
                     }
@@ -291,7 +315,7 @@ public class OIOSave {
         throw new OIOException("Unhandled member type: " + fc + " for " + val);
     }
 
-    public void save(OIOAble theOneAndOnlyTop, GlobalOnumMap omap)
+    public void save(OIOAble theOneAndOnlyTop, OIOAbleGlobalMap omap)
             throws IOException, OIOException {
         if (!this.mTopsPending.isEmpty())
             throw new IllegalStateException();

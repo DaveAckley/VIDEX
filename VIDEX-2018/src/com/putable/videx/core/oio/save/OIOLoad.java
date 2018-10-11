@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
@@ -42,18 +43,31 @@ public class OIOLoad {
     private String mLastLoadDirectory = null;
     private FileTime mLastLoadDirectoryModificationTime = null;
     private OIOCompiler mCompiler;
-    
+
     private int mTopOnum = -1;
     private List<File> mPendingOIOs = new LinkedList<File>();
-    private Map<Long, HashMap<String, String>> mOutOfLineContent = new HashMap<Long, HashMap<String, String>>();
+    private Map<Long, HashMap<String, byte[]>> mOutOfLineContent = new HashMap<Long, HashMap<String, byte[]>>();
 
-    private String getOutOfLineContentIfAny(int onum, String extension) {
-        HashMap<String, String> hm = mOutOfLineContent.get(Long.valueOf(onum));
+    private byte[] getOutOfLineContentIfAnyAsByteArray(int onum,
+            String extension) {
+        HashMap<String, byte[]> hm = mOutOfLineContent.get(Long.valueOf(onum));
         if (hm == null)
             return null;
-        return hm.get(extension);
+        byte[] data = hm.get(extension);
+        return data;
     }
 
+    private String getOutOfLineContentIfAny(int onum, String extension) {
+        byte[] data = getOutOfLineContentIfAnyAsByteArray(onum, extension);
+        if (data == null)
+            return null;
+        return new String(data, StandardCharsets.UTF_8);
+    }
+
+    public OIOAbleGlobalMap getMap() {
+        return this.mOnumMap;
+    }
+    
     public OIOLoad(String baseDir, OIOAbleGlobalMap map) {
         this.mBaseDirectory = baseDir;
         this.mOnumMap = map;
@@ -67,23 +81,23 @@ public class OIOLoad {
     }
 
     public OIOAble loadIfNeeded() throws IOException, OIOException {
-        String dir = FileUtils
-                .findMaxSubdirNameUnder(Paths.get(mBaseDirectory)).toString();
+        String dir = FileUtils.findMaxSubdirNameUnder(Paths.get(mBaseDirectory))
+                .toString();
         FileTime mod = FileUtils.getModificationTime(Paths.get(dir));
-        if (mLastLoadDirectory == null ||
-                !dir.equals(mLastLoadDirectory) ||
-                mLastLoadDirectoryModificationTime == null ||
-                mLastLoadDirectoryModificationTime.compareTo(mod) < 0) {
+        if (mLastLoadDirectory == null || !dir.equals(mLastLoadDirectory)
+                || mLastLoadDirectoryModificationTime == null
+                || mLastLoadDirectoryModificationTime.compareTo(mod) < 0) {
             this.mLastLoadDirectory = dir;
             mLastLoadDirectoryModificationTime = mod;
             return load();
         }
         return null;
     }
-    
+
     public OIOAble load() throws OIOException {
         reset();
-                
+
+        System.out.println("LOADING DIRECTORY: "+this.mLastLoadDirectory);
         File dir = new File(this.mLastLoadDirectory);
         File[] files = dir.listFiles();
         Arrays.sort(files, null);
@@ -91,9 +105,9 @@ public class OIOLoad {
         for (final File fileEntry : files) {
             considerFile(fileEntry);
         }
-        
-        mCompiler = new OIOCompiler(this.mLastLoadDirectory,
-                this.mOnumMap, this);
+
+        mCompiler = new OIOCompiler(this.mLastLoadDirectory, this.mOnumMap,
+                this);
 
         for (final File fileEntry : mPendingOIOs) {
             loadOIO(fileEntry);
@@ -105,7 +119,7 @@ public class OIOLoad {
         OIOAble ret = this.mOnumMap.get(mTopOnum);
         if (ret == null)
             throw new OIOException("Undefined top onum " + mTopOnum);
-        reset();
+        //reset();
         return ret;
     }
 
@@ -182,11 +196,23 @@ public class OIOLoad {
                         else if (extension.startsWith("."))
                             extension = extension.substring(1,
                                     extension.length());
-                        String content = this.getOutOfLineContentIfAny(onum,
-                                extension);
-                        if (content != null) {
-                            field.set(object, content);
-                        }
+                        //System.out.println("FIELDKK " + field );
+                        //System.out.println("FIELDTTKK " + field.getGenericType());
+                        //System.out.println("FIEDODOLDTTKK " + byte[].class);
+                        Class<?> ftype = field.getType();
+                        if (ftype == byte[].class) {
+                            byte[] content = this.getOutOfLineContentIfAnyAsByteArray(onum, extension);
+                            if (content != null) {
+                                field.set(object, content);
+                            }
+                        } else if (ftype == String.class) {
+                            String content = this.getOutOfLineContentIfAny(onum,
+                                    extension);
+                            if (content != null) {
+                                field.set(object, content);
+                            }
+                        } else 
+                            throw new ParseException(o.getToken(), "OIO(inline=false) only legal on String or byte[] members, not "+field);
                     }
                 }
                 objectClass = objectClass.getSuperclass();
@@ -196,7 +222,6 @@ public class OIOLoad {
             throw new ParseException(o.getToken(), e.getMessage());
         }
     }
-
 
     private void loadOIO(File fileEntry) {
         mCompiler.loadFile(fileEntry);
@@ -243,10 +268,10 @@ public class OIOLoad {
         if (extension.equals("oio"))
             this.mPendingOIOs.add(file);
         else {
-            String data = FileUtils.readWholeFile(file.toPath());
-            HashMap<String, String> extdat = this.mOutOfLineContent.get(lonum);
+            byte[] data = FileUtils.readWholeFileAsByteArray(file.toPath());
+            HashMap<String, byte[]> extdat = this.mOutOfLineContent.get(lonum);
             if (extdat == null) {
-                extdat = new HashMap<String, String>();
+                extdat = new HashMap<String, byte[]>();
                 this.mOutOfLineContent.put(lonum, extdat);
             }
             extdat.put(extension, data);

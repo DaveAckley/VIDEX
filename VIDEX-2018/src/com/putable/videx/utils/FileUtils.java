@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -85,16 +86,34 @@ public class FileUtils {
      *             at {@link Files#readAllBytes(Path)}
      */
     public static String readWholeFile(Path toFile) {
-        String text = null;
+        byte[] bytes = readWholeFileAsByteArray(toFile);
+        if (bytes == null) return null;
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Return the entire contents of toFile as a byte[]
+     * 
+     * @param toFile
+     *            non-null Path to read
+     * @return the contents of toFile as a byte[], or instead null if an
+     *         IOException occurs
+     * 
+     * @throws NullPointerException
+     *             if toFile is null, or possibly other exceptions as described
+     *             at {@link Files#readAllBytes(Path)}
+     */
+    public static byte[] readWholeFileAsByteArray(Path toFile) {
+        byte[] encoded = null;
         try {
-            byte[] encoded = Files.readAllBytes(toFile);
-            text = new String(encoded);
+            encoded = Files.readAllBytes(toFile);
         } catch (IOException e) {
-            System.err.println("readWholeFile: Path " + toFile + " got " + e);
+            System.err.println("readWholeFileAsByteArray: Path " + toFile + " got " + e);
             // Fall through with ret=null
         }
-        return text;
+        return encoded;
     }
+
 
     /**
      * Write text to toFile, replacing any previous content if toFile already
