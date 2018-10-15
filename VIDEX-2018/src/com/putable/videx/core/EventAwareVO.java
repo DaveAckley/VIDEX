@@ -26,7 +26,7 @@ import com.putable.videx.interfaces.VO;
 public abstract class EventAwareVO extends StandardVO {
     @OIO
     private boolean mMouseAwarenessEnabled = true;
-    @OIO
+    
     private boolean mIsMouseTarget = false;
     @OIO
     private boolean mIsDraggable = true;
