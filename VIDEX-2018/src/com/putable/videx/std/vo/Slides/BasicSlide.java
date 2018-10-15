@@ -22,7 +22,7 @@ import com.putable.videx.interfaces.Slide;
 import com.putable.videx.interfaces.SlideDeck;
 import com.putable.videx.interfaces.Stage;
 import com.putable.videx.std.vo.EditableTextLine;
-import com.putable.videx.std.vo.Image;
+import com.putable.videx.std.vo.OIOImage;
 import com.putable.videx.std.vo.PopupTextLineEntry;
 
 @OIOTop
@@ -182,8 +182,13 @@ public class BasicSlide extends EventAwareVO implements Slide {
     private String mLastImagePath = "";
 
     private void tryAddImage(String imgpath) {
-        mLastImagePath = imgpath;
-        this.addPendingChild(new Image(mLastImagePath));
+        OIOImage img = OIOImage.makeFromPath(imgpath);
+        if (img == null) 
+            System.out.println("Couldn't make image from "+imgpath);
+        else {
+            mLastImagePath = imgpath;
+            this.addPendingChild(img);
+        }
     }
 
     @Override

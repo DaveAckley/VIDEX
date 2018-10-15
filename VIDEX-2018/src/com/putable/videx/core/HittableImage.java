@@ -17,6 +17,7 @@ public class HittableImage {
     private final VO mForVO;
     private BufferedImage mImage = null;
     private BufferedImage mHitmapImage = null;
+
     private void initHitmapImage(VOGraphics2D v2d) {
         if (mHitmapImage != null) throw new IllegalStateException();
         int w = mImage.getWidth();

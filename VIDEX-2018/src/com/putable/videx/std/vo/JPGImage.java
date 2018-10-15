@@ -6,6 +6,11 @@ public class JPGImage extends OIOImage {
     @OIO(inline = false, extension = "jpg")
     private byte[] mData = null;
 
+    public JPGImage() { }
+    public JPGImage(byte[] data) {
+        mData = data;
+    }
+
     @Override
     public byte[] getImageData() {
         return mData;

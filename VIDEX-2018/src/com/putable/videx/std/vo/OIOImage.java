@@ -2,6 +2,7 @@ package com.putable.videx.std.vo;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.nio.file.Paths;
 
 import com.putable.videx.core.EventAwareVO;
 import com.putable.videx.core.HittableImage;
@@ -9,8 +10,23 @@ import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.utils.FileUtils;
 
 public abstract class OIOImage extends EventAwareVO {
+
+    public static OIOImage makeFromPath(String path) {
+        OIOImage ret = null;
+        byte[] data = FileUtils.readWholeFileAsByteArray(Paths.get(path));
+        if (path.endsWith(".png")) 
+            ret = new PNGImage(data);
+        else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) 
+            ret = new JPGImage(data);
+        else return null;
+        ret.mImageName = path;
+        return ret;
+    }
+    
+
     @OIO
     private String mImageName = "";
 
