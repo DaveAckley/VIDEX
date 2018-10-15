@@ -74,6 +74,10 @@ public abstract class EventAwareVO extends StandardVO {
     public void mouseExited() {
         mIsMouseTarget = false;
     }
+    
+    public boolean isMouseTarget() {
+        return mIsMouseTarget;
+    }
 
     private Point2D mapPixelToVOCOrDie(Point2D inPixel) {
         Point2D ret = mapPixelToVOCOrNull(inPixel, null);

@@ -75,6 +75,11 @@ public class StagePanel extends JPanel {
         checkTriggerPoints(mRoot, mStageGraphics.getHitmap());
     }
 
+    private void reportMouseAction() {
+        // Notify the cursor about every potential position change
+        mRoot.getMouseVO().track(mMousePosition);
+    }
+
     private void checkAndUpdateMouseTarget(Point2D at) {
 
         if (at == null) { // If no mouse point
@@ -88,9 +93,9 @@ public class StagePanel extends JPanel {
         }
 
         this.mMousePosition = at;
-        // Notify the cursor about every potential position change
-        mRoot.getMouseVO().track(mMousePosition);
-
+       
+        reportMouseAction();
+    
         // We have a target.
         // First issue: Are we dragging?
         if (mIsDragging) {
@@ -209,11 +214,15 @@ public class StagePanel extends JPanel {
                         | InputEvent.SHIFT_DOWN_MASK;
                 final int zoomMask = InputEvent.CTRL_DOWN_MASK;
                 if ((modex & rotateMask) == rotateMask) {
-                    if (mMouseTarget.rotateAround(at, wheelrot))
+                    if (mMouseTarget.rotateAround(at, wheelrot)) {
+                        reportMouseAction();
                         return;
+                    }
                 } else if ((modex & zoomMask) == zoomMask) {
-                    if (mMouseTarget.zoomAround(at, -wheelrot))
+                    if (mMouseTarget.zoomAround(at, -wheelrot)) {
+                        reportMouseAction();
                         return;
+                    }
                 }
             }
             // ELSE FALL THROUGH

@@ -2,6 +2,7 @@ package com.putable.videx.core;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 
 import com.putable.videx.core.events.KeyboardEventInfo;
@@ -14,7 +15,6 @@ public class MouseVO extends StandardVO implements VO {
     private Point2D mMousePoint = new Point2D.Float();
     public static final int UPDATES_UNTIL_HIDING = 50;
     private int mHideTimer = UPDATES_UNTIL_HIDING;
-
     public MouseVO() {
         this.setBackground(Color.DARK_GRAY);
         this.setForeground(Color.WHITE);
@@ -38,17 +38,31 @@ public class MouseVO extends StandardVO implements VO {
         if (mHideTimer >= 0) --mHideTimer;
         return true;
     }
-
+    private int arrowXPts1[] = { 
+            33375, 440, 213, 359, -212, 561, -1335
+    };
+    private int arrowYPts1[] = {
+            37851, -361, 587, -133, -585, -3, -1447
+    };
+    private static final int arrowXPts[] = { 
+             0,  0, 22, 12, 16, 11,  7
+    };
+    private static final int arrowYPts[] = {
+            -4,-35,-12,-12, -2,  0,-10
+    };
+    private static final int arrowXOffset = 0;
+    private static final int arrowYOffset = 35;
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
         if (v2d.isRenderingToHitmap()) return;
         if (mHideTimer < 0) return;
         Graphics2D g2d = v2d.getGraphics2D();
-        final int MOUSE_RADIUS = 10;
-        g2d.setColor(Color.red);
-        g2d.drawRect((int) (mMousePoint.getX()-MOUSE_RADIUS), 
-                (int) (mMousePoint.getY()-MOUSE_RADIUS),
-                2*MOUSE_RADIUS,2*MOUSE_RADIUS);
+        AffineTransform old = g2d.getTransform();
+        g2d.translate(mMousePoint.getX()+arrowXOffset, mMousePoint.getY()+arrowYOffset);
+        g2d.fillPolygon(arrowXPts, arrowYPts, arrowXPts.length);
+        g2d.setColor(g2d.getBackground());
+        g2d.drawPolygon(arrowXPts, arrowYPts, arrowXPts.length);
+        g2d.setTransform(old);
     }
 
     @Override

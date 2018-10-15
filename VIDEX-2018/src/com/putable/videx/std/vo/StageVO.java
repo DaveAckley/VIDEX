@@ -27,6 +27,12 @@ public class StageVO extends StandardVO {
     private VO mGlassLayerRoot = mMouseVO;
 
     @Override
+    public void computeThisTransformVO(World world) {
+        super.computeThisTransformVO(world);
+        mGlassLayerRoot.computeTransformVO(world);
+    }
+
+    @Override
     public void drawVO(VOGraphics2D v2d) {
         super.drawVO(v2d);
         // Put glass layer last
