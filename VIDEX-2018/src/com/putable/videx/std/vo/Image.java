@@ -40,12 +40,14 @@ public class Image extends EventAwareVO implements IOEventFilterMouse {
         v2d.getGraphics2D().drawImage(bi, 0, 0, bi.getWidth(), bi.getHeight(), null);
     }
 
+    /*
     @Override
     public boolean updateThisVO(Stage stage) {
         Pose p = this.getPose();
         p.setR(p.getR()+0.01f);
         return true;
     }
+    */
 
     @Override
     public boolean matches(IOEvent ioe) {

@@ -133,6 +133,15 @@ public abstract class StandardVO implements VO {
     @OIO
     private Pose mPose = new Pose();
 
+    public <V extends VO> V findFirstInstance(Class<V> c) {
+        for (VO vo : this) {
+            if (c.isInstance(vo)) return c.cast(vo);
+        }
+        for (VO vo : this.pending()) {
+            if (c.isInstance(vo)) return c.cast(vo);
+        }
+        return null;
+    }
     /**
      * The AffineTransform from my VOC to my parent's VOC
      */
@@ -263,6 +272,10 @@ public abstract class StandardVO implements VO {
         mVO.forEach(arg0);
     }
 
+    public Iterable<VO> pending() {
+        return mPending;
+    }
+    
     @Override
     public Iterator<VO> iterator() {
         return mVO.iterator();

@@ -9,13 +9,49 @@ import java.awt.geom.Point2D;
 import com.putable.videx.core.EventAwareVO;
 import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
+import com.putable.videx.core.events.SpecialEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.interfaces.VO;
 
 public class EditableTextLine extends EventAwareVO {
+    public class TextLineEnteredEventInfo extends SpecialEventInfo{
+        private String mValue = null;
+        public void setValue(String s) {
+            mValue = s;
+        }
+
+        @Override
+        public Object getValue() {
+            return mValue;
+        }
+        
+    }
+    {
+        this.setIsFocusAware(true);
+    }
+    @OIO(owned=false)
+    private VO mCallbackVO = null;
+    
+    public void setCallback(VO callback) {
+        mCallbackVO = callback;
+    }
+    
     @OIO
     private String mText = "";
 
+    public void setText(String str) {
+        if (str == null)
+            throw new IllegalArgumentException();
+        if (str.matches("[\\\\n]"))  // This is not enough, right?
+            throw new IllegalArgumentException();
+        mText = str;
+    }
+
+    public String getText() {
+        return mText;
+    }
+    
     @OIO
     /**
      * 0: Before first char
@@ -25,7 +61,9 @@ public class EditableTextLine extends EventAwareVO {
 
     private int mCursorPhase = 0;
     private final static int CURSOR_PHASE_MAX = 40; 
-    
+
+    private final static int MIN_WIDTH = 10; 
+
     @Override
     public boolean updateThisVO(Stage s) {
         if (++mCursorPhase >= CURSOR_PHASE_MAX)
@@ -39,7 +77,7 @@ public class EditableTextLine extends EventAwareVO {
         FontMetrics fm = getUnscrewedFontMetrics(g2d, 0);
         //System.out.println("DDKIE "+fm.getAscent()+" "+fm.getDescent());
         int height = fm.getAscent() + fm.getDescent();
-        g2d.clearRect(0, -fm.getDescent(), fm.stringWidth(mText), height);
+        g2d.clearRect(0, -fm.getDescent(), Math.max(MIN_WIDTH, fm.stringWidth(mText)), height);
         g2d.drawString(mText, 0, fm.getAscent()-fm.getDescent());
         if (mCursorPhase < CURSOR_PHASE_MAX/2 && mCursorPos >= 0 && mCursorPos <= mText.length()) {
             String substr = mText.substring(0, mCursorPos);
@@ -48,9 +86,10 @@ public class EditableTextLine extends EventAwareVO {
         }
     }
 
-    public EditableTextLine() { this(0,0); }
+    public EditableTextLine() { this(null,0,0); }
 
-    public EditableTextLine(int x, int y) {
+    public EditableTextLine(VO callback, int x, int y) {
+        this.setCallback(callback);
         this.setBackground(Color.BLUE);
         this.setForeground(Color.WHITE);
         this.getPose().setPAX(x);
@@ -63,7 +102,7 @@ public class EditableTextLine extends EventAwareVO {
     }
 
     private boolean handleKeyCodeForEdit(int code,boolean insrt) {
-        switch (code) {
+        if (!insrt) switch (code) {
         case KeyEvent.VK_LEFT: return moveCursorRelative(-1);
         case KeyEvent.VK_RIGHT: return moveCursorRelative(1);
         case KeyEvent.VK_HOME: 
@@ -76,11 +115,17 @@ public class EditableTextLine extends EventAwareVO {
         case KeyEvent.VK_BACK_SPACE: return deleteRelative(-1);
         default: break;
         }
-        System.out.println("HCKDKE "+code+" asc "+(char) code);
         if (!Character.isBmpCodePoint(code))
             return false; // Sorry can't deal with unicode yet
         if (Character.isISOControl(code)) {
-            System.out.println("CTONROL "+code);
+            if (code == '\n') {
+                if (mCallbackVO != null) {
+                    TextLineEnteredEventInfo info = new TextLineEnteredEventInfo();
+                    info.setValue(this.mText);
+                    mCallbackVO.handleSpecialEvent(info);
+                }
+                this.killVO();
+            }
             return false;
         }
         return !insrt || insertPrintable((char) code);
