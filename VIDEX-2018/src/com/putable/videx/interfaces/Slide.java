@@ -1,7 +1,5 @@
 package com.putable.videx.interfaces;
 
-import com.putable.videx.std.vo.Slides.BasicSlideDeck;
-
 public interface Slide extends OIOAble {
     /**
      * Get and/or set the Slide HTML component

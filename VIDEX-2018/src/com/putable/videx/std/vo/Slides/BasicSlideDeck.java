@@ -187,7 +187,7 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
         if (kei.isKeyTyped(' ')) return changeSlide(1);
         KeyEvent ke = kei.getKeyEvent();
-        if (ke.getID() == ke.KEY_RELEASED) {
+        if (ke.getID() == KeyEvent.KEY_RELEASED) {
             int code = ke.getKeyCode();
             switch (code) {
             case KeyEvent.VK_RIGHT:
@@ -207,7 +207,7 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
             }
         }
         
-        if (ke.getID() != ke.KEY_TYPED) return false;
+        if (ke.getID() != KeyEvent.KEY_TYPED) return false;
         //if (ke.getKeyChar() == '\022') return reload(); //^R
         if (ke.getKeyChar() == '\023') return checkpointSave(); //^S
         return false;

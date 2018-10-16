@@ -188,12 +188,12 @@ public class EditableTextLine extends EventAwareVO {
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
         if (isMouseTarget()) {
             KeyEvent ke = kei.getKeyEvent();
-            if (ke.getID() == ke.KEY_TYPED) {
+            if (ke.getID() == KeyEvent.KEY_TYPED) {
                 char ch = ke.getKeyChar();
                 if (handleKeyCodeForEdit(ch,true))
                     return true;
             }
-            if (ke.getID() == ke.KEY_RELEASED) {
+            if (ke.getID() == KeyEvent.KEY_RELEASED) {
                 int code = ke.getKeyCode();
                 if (handleKeyCodeForEdit(code,false))
                     return true;

@@ -156,7 +156,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
         if (isMouseTarget()) {
             KeyEvent ke = kei.getKeyEvent();
-            if (ke.getID() == ke.KEY_TYPED) {
+            if (ke.getID() == KeyEvent.KEY_TYPED) {
                 char ch = ke.getKeyChar();
                 if (ch == 'I') {
                     this.addPendingChild(new PopupTextLineEntry(this,
