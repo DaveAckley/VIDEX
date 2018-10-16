@@ -21,6 +21,7 @@ import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.Slide;
 import com.putable.videx.interfaces.SlideDeck;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.std.riders.TogglePresentationRider;
 import com.putable.videx.std.vo.EditableTextLine;
 import com.putable.videx.std.vo.OIOImage;
 import com.putable.videx.std.vo.PopupTextLineEntry;
@@ -186,6 +187,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
         if (img == null) 
             System.out.println("Couldn't make image from "+imgpath);
         else {
+            img.addRider(new TogglePresentationRider());
             mLastImagePath = imgpath;
             this.addPendingChild(img);
         }
@@ -201,5 +203,4 @@ public class BasicSlide extends EventAwareVO implements Slide {
         }
         return false;
     }
-
 }
