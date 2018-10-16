@@ -10,6 +10,7 @@ import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.events.MouseEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
 import com.putable.videx.core.oio.OIO;
+import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.VO;
 
 /**
@@ -196,6 +197,10 @@ public abstract class EventAwareVO extends StandardVO {
     public boolean handleKeyboardEvent(KeyboardEventInfo kei) {
         for (VO kid : this) {
             if (kid.handleKeyboardEvent(kei))
+                return true;
+        }
+        for (Rider rider : this.getRiders()) {
+            if (rider.handleKeyboardEvent(kei))
                 return true;
         }
         return isFocusAware() && handleKeyboardEventHere(kei);

@@ -1,9 +1,11 @@
 package com.putable.videx.interfaces;
 
+import com.putable.videx.core.events.KeyboardEventInfo;
+
 /**
  * A Rider is associated with some VO and can observe and make changes to that
  * VO's state (and perhaps its children or surrounding state). Riders are run
- * during StandardVO.updateVO
+ * during StandardVO.updateVO, and they may react to mouse or keyboard events as well.
  * 
  * @author ackley
  * 
@@ -88,4 +90,6 @@ public interface Rider extends OIOAble {
      * {@link #REACT_DIE} on any future {@link #react(VO)} calls.
      */
     void die();
+    
+    boolean handleKeyboardEvent(KeyboardEventInfo kei);
 }
