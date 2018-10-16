@@ -2,6 +2,7 @@ package com.putable.videx.std.riders;
 
 import com.putable.videx.core.Pose;
 import com.putable.videx.core.StandardRider;
+import com.putable.videx.core.StandardVO;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.VO;
 
@@ -59,6 +60,17 @@ public class SOSIPoseRider extends StandardRider {
     @OIO(owned = false)
     private VO mVehicle = null;
 
+    @OIO(owned = false)
+    private StandardVO mLastStandardVehicle = null;
+
+    public VO getVehicle() {
+        return mVehicle; // Only valid after observe()
+    }
+
+    public StandardVO getLastStandardVehicle() {
+        return mLastStandardVehicle;
+    }
+    
     @Override
     public void awaken() {
         mVehicle = null;
@@ -67,6 +79,9 @@ public class SOSIPoseRider extends StandardRider {
     @Override
     public void observe(VO vo) {
         if (mVehicle == null) {
+            if (vo instanceof StandardVO) {
+                mLastStandardVehicle = (StandardVO) vo;
+            }
             mVehicle = vo;
             mCurrentStep = 0;
             mFrom = new Pose(vo.getPose());
