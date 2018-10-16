@@ -185,13 +185,13 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
     }
     @Override
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
+        if (kei.isKeyTyped(' ')) return changeSlide(1);
         KeyEvent ke = kei.getKeyEvent();
         if (ke.getID() == ke.KEY_RELEASED) {
             int code = ke.getKeyCode();
             switch (code) {
             case KeyEvent.VK_RIGHT:
             case KeyEvent.VK_DOWN:
-            case KeyEvent.VK_SPACE:
                 return changeSlide(1);
             case KeyEvent.VK_LEFT:
             case KeyEvent.VK_UP:
