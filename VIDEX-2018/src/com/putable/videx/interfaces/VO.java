@@ -324,4 +324,12 @@ public interface VO extends Iterable<VO>, OIOAble {
      *            non-zero color value to assign to this VO
      */
     void setHitmapColor(int code);
+    
+    public static final int VO_REORDER_NONE = 0;
+    public static final int VO_REORDER_TOP = 1;
+    /**
+     * Let this VO request a change in sibling order
+     * @return
+     */
+    int pollReorderRequest() ;
 }

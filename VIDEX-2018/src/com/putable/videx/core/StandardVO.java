@@ -291,6 +291,23 @@ public abstract class StandardVO implements VO {
         return mPose;
     }
 
+    @OIO
+    private Integer mUnprocessedReorderRequest = null;
+    
+    @Override
+    public int pollReorderRequest() {
+        int ret = VO.VO_REORDER_NONE;
+        if (mUnprocessedReorderRequest != null) {
+            ret = mUnprocessedReorderRequest;
+            mUnprocessedReorderRequest = null;
+        }
+        return ret;
+    }
+
+    public void requestTop() {
+        mUnprocessedReorderRequest = VO.VO_REORDER_TOP;
+    }
+    
     @Override
     public void killVO() {
         // We are not recursing to kill kids here, because killing needs to be
@@ -318,6 +335,28 @@ public abstract class StandardVO implements VO {
             mVO.add(kid);
         }
 
+        // Check for any reordering requests
+        LinkedList<VO> tops = null;
+        //LinkedList<VO> bottoms = null;
+        for (Iterator<VO> iterator = mVO.iterator(); iterator.hasNext();) {
+            VO vo = iterator.next();
+            if (!vo.isAlive()) {
+                // no way to clear parent link at present. vo.setParent(null);
+                iterator.remove(); // Reap VOs known dead by this time
+            } else {
+                int req = vo.pollReorderRequest();
+                if (req == VO.VO_REORDER_TOP) {
+                    if (tops == null) tops = new LinkedList<VO>();
+                    tops.add(vo);
+                    iterator.remove();
+                } else if (req != VO.VO_REORDER_NONE) {
+                   System.err.println("UNKNOWN OR UNIMPLEMENTED REORDER REQ "+ req);
+                }
+            }                
+        }
+        if (tops != null) for (VO v : tops) mVO.add(v);
+        //if (bottoms != null) for (VO v : bottoms) mVO.add(0, v);
+        
         // If we're not enabled, no updating happens
         if (!isEnabled())
             return;
