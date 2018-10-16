@@ -1,7 +1,9 @@
 package com.putable.videx.std.vo;
 
 import com.putable.videx.core.oio.OIO;
+import com.putable.videx.core.oio.OIOTop;
 
+@OIOTop
 public class PNGImage extends OIOImage {
     @OIO(inline = false, extension = "png")
     private byte[] mData = null;
