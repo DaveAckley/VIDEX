@@ -66,7 +66,8 @@ public abstract class OIOImage extends EventAwareVO {
 
     @Override
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
-        return true;
+        // By default we do not handle keyboard crap.
+        return false;
     }
 
 }
