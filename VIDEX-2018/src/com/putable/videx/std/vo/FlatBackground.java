@@ -7,7 +7,7 @@ import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.interfaces.Stage;
 
-public class BlackBackground extends EventAwareVO {
+public class FlatBackground extends EventAwareVO {
 
     @Override
     public boolean updateThisVO(Stage stage) {
@@ -28,8 +28,9 @@ public class BlackBackground extends EventAwareVO {
         v2d.getGraphics2D().clearRect(0, 0, 10000, 10000);
     }
 
-    public BlackBackground() {
-        this.setBackground(new Color(1,1,1));
+    public FlatBackground() {
+        this.setBackground(Color.BLACK);
+        this.setForeground(Color.WHITE);
     }
 
     @Override

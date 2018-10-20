@@ -1,7 +1,6 @@
-package com.putable.videx.std.vo;
+package com.putable.videx.std.vo.image;
 
 import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
 import java.nio.file.Paths;
 
 import com.putable.videx.core.EventAwareVO;
@@ -53,9 +52,12 @@ public abstract class OIOImage extends EventAwareVO {
         Graphics2D g2d = v2d.getGraphics2D();
         initFromImageDataIfNeededAndAvailable();
         if (mImage != null) {
+            mImage.drawImage(v2d, 0, 0);
+            /*
             BufferedImage bi = mImage.getImage(v2d);
             v2d.getGraphics2D().drawImage(bi, 1, 0, bi.getWidth(),
                     bi.getHeight(), null);
+             */
         }
     }
 
