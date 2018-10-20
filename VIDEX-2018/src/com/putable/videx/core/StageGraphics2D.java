@@ -2,6 +2,7 @@ package com.putable.videx.core;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 
 import com.putable.videx.interfaces.VO;
@@ -52,20 +53,29 @@ public class StageGraphics2D implements VOGraphics2D {
 
     private void renderVOTo(VO vo, Graphics2D g2d, Color fg, Color bg, boolean toHitmap) {
         this.mIsRenderingToHitmap = toHitmap;
-        Color oldfg = g2d.getColor();
-        Color oldbg = g2d.getBackground();
+        
         AffineTransform at = g2d.getTransform();
-
         g2d.setTransform(vo.getVOCToPixelTransform(null));
-        if (fg != null)
+        
+        Color oldfg = null;
+        Color oldbg = null; 
+
+        if (fg != null) {
+            oldfg = g2d.getColor();
             g2d.setColor(fg);
-        if (bg != null)
+        }
+        if (bg != null) {
+            oldbg = g2d.getBackground();
             g2d.setBackground(bg);
+        }
 
         vo.drawThisVO(this);
 
-        g2d.setColor(oldfg);
-        g2d.setBackground(oldbg);
+        if (fg != null) 
+            g2d.setColor(oldfg);
+        if (bg != null)
+            g2d.setBackground(oldbg);
+
         g2d.setTransform(at);
     }
 
@@ -95,9 +105,21 @@ public class StageGraphics2D implements VOGraphics2D {
     }
 
     @Override
-    public Color getWorkingColor(Color color, VO forVO) {
-        if (mIsRenderingToHitmap)
-            return forVO.getForeground();
-        return color;
+    public Shape startVORender(VO vo) {
+        Shape ret = mScreenG2D.getClip(); // null -> no clip
+        Shape s = vo.getClip();
+        if (s != null) { 
+            AffineTransform at = vo.getVOCToPixelTransform(null);
+            Shape news = at.createTransformedShape(s);
+            mScreenG2D.setClip(news);
+            mHitmap.getGraphics2D().setClip(news);
+        }
+        return ret;
+    }
+
+    @Override
+    public void finishVORender(Shape oldclip) {
+        mScreenG2D.setClip(oldclip);  // null oldclip okay
+        mHitmap.getGraphics2D().setClip(oldclip);
     }
 }

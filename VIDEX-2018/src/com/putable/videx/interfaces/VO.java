@@ -1,6 +1,7 @@
 package com.putable.videx.interfaces;
 
 import java.awt.Color;
+import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.util.Iterator;
@@ -13,16 +14,16 @@ import com.putable.videx.core.events.MouseEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
 
 /**
- * Interface of all Visualization Objects in VIDEX.  Iterable to get its kids.
+ * Interface of all Visualization Objects in VIDEX. Iterable to get its kids.
  * 
  * @author ackley
  * 
  */
 public interface VO extends Iterable<VO>, OIOAble {
-    
+
     @Override
     int getOnum();
-    
+
     /**
      * Current position, rotation, and scale of this VO relative to its parent
      * 
@@ -43,6 +44,14 @@ public interface VO extends Iterable<VO>, OIOAble {
      * @return the color
      */
     Color getBackground();
+
+    /**
+     * Current clipping shape for this VO, if any
+     * 
+     * @return the clip for drawing this VO and its children, or null for no
+     *         change to the clipping region
+     */
+    Shape getClip();
 
     /**
      * Get the transformation that maps position in this VO to position in its
@@ -324,12 +333,14 @@ public interface VO extends Iterable<VO>, OIOAble {
      *            non-zero color value to assign to this VO
      */
     void setHitmapColor(int code);
-    
+
     public static final int VO_REORDER_NONE = 0;
     public static final int VO_REORDER_TOP = 1;
+
     /**
      * Let this VO request a change in sibling order
+     * 
      * @return
      */
-    int pollReorderRequest() ;
+    int pollReorderRequest();
 }

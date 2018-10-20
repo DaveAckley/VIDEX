@@ -3,6 +3,7 @@ package com.putable.videx.core;
 import java.awt.Color;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
@@ -156,6 +157,9 @@ public abstract class StandardVO implements VO {
     private Color mBackground = Color.DARK_GRAY;
 
     @OIO
+    private Shape mClipShape = null;
+
+    @OIO
     private Color mForeground = Color.LIGHT_GRAY;
 
     private int mHitmapColor = 0;
@@ -258,6 +262,15 @@ public abstract class StandardVO implements VO {
 
     public void setForeground(Color foreground) {
         this.mForeground = foreground;
+    }
+
+    @Override
+    public Shape getClip() {
+        return mClipShape;
+    }
+
+    public void setClip(Shape shape) {
+        this.mClipShape = shape;
     }
 
     @Override
@@ -435,13 +448,18 @@ public abstract class StandardVO implements VO {
     @Override
     public void drawVO(VOGraphics2D v2d) {
 
+
         if (!isEnabled() || !isAlive())
             return;
 
         v2d.renderVO(this);
 
+        Shape oldclip = v2d.startVORender(this);
+        
         for (VO vo : mVO)
             vo.drawVO(v2d);
+        
+        v2d.finishVORender(oldclip);
     }
 
     /**
