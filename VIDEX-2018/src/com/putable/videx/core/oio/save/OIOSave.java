@@ -282,6 +282,8 @@ public class OIOSave {
             return "[" + c.getRed() + " " + c.getGreen() + " " + c.getBlue()
                     + ((c.getAlpha() == 255) ? "" : " " + c.getAlpha()) + "]";
         });
+        mFormatters.put(java.nio.file.Path.class, 
+                (value, map, add) -> value == null ? "null" : ((Path) value).toString());
         mFormatters.put(OIOAble.class, (value, map, add) -> {
             OIOAble oio = (OIOAble) value;
             if (oio == null)
@@ -299,6 +301,7 @@ public class OIOSave {
                 Arrays.stream((double[]) value)::iterator, map, add));
         mFormatters.put(float[].class,
                 (value, map, add) -> formatIterable((float[]) value, add));
+                  
     }
 
     private String formatVal(Object val, Class<?> fc, OIOAbleGlobalMap map,

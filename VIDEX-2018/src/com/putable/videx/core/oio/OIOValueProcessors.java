@@ -1,7 +1,10 @@
 package com.putable.videx.core.oio;
 
 import java.awt.Color;
+import java.awt.Rectangle;
 import java.awt.geom.Point2D;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -54,6 +57,10 @@ public class OIOValueProcessors {
                 (value, map, add) -> Token.escapeQuotedString((String) value),
                 (av,map) -> av.getAsString());
             
+        o.add(java.nio.file.Path.class.getName(), true, 
+                (value, map, add) -> Token.escapeQuotedString(((Path) value).toString()),
+                (av,map) -> Paths.get(av.getAsString()));
+            
         o.add(OIOAble.class.getName(), true,
                 (value, map, add) -> { 
                     OIOAble oio = (OIOAble) value;
@@ -79,6 +86,26 @@ public class OIOValueProcessors {
                             new Point2D.Double(
                                     avs.get(0).getAsDouble(),
                                     avs.get(1).getAsDouble());
+                    return ret;
+                });
+
+        o.add(Rectangle.class.getName(), true,
+                (value, map, add) -> 
+                    "[" + ((Rectangle) value).x +
+                    " " + ((Rectangle) value).y +
+                    " " + ((Rectangle) value).width +
+                    " " + ((Rectangle) value).height +
+                    "]",
+                (av, map) -> {
+                    List<ASTValue> avs = av.getArrayValue();
+                    if (avs==null) throw new IllegalStateException();
+                    if (avs.size() != 4) throw new IllegalArgumentException();
+                    Rectangle ret = 
+                            new Rectangle(
+                                    avs.get(0).getAsInt(),
+                                    avs.get(1).getAsInt(),
+                                    avs.get(2).getAsInt(),
+                                    avs.get(3).getAsInt());
                     return ret;
                 });
         o.add(LinkedList.class.getName(), true,

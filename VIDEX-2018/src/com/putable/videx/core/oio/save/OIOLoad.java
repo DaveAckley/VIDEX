@@ -38,6 +38,9 @@ import com.putable.videx.utils.FileUtils;
 public class OIOLoad {
 
     private final String mBaseDirectory;
+    public String getBaseDirectory() {
+        return mBaseDirectory;
+    }
     private final OIOAbleGlobalMap mOnumMap;
     private final OIOValues mOIOValues = new OIOValues(this);
     private String mLastLoadDirectory = null;
@@ -81,8 +84,10 @@ public class OIOLoad {
     }
 
     public OIOAble loadIfNeeded() throws IOException, OIOException {
-        String dir = FileUtils.findMaxSubdirNameUnder(Paths.get(mBaseDirectory))
-                .toString();
+        Path maxsub = FileUtils.findMaxSubdirNameUnder(Paths.get(mBaseDirectory));
+        if (maxsub == null)
+            throw new OIOException("No subdirs found under '"+mBaseDirectory+"'");
+        String dir = maxsub.toString();
         FileTime mod = FileUtils.getModificationTime(Paths.get(dir));
         if (mLastLoadDirectory == null || !dir.equals(mLastLoadDirectory)
                 || mLastLoadDirectoryModificationTime == null
