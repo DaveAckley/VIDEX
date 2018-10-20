@@ -23,8 +23,8 @@ import com.putable.videx.interfaces.SlideDeck;
 import com.putable.videx.interfaces.Stage;
 import com.putable.videx.std.riders.TogglePresentationRider;
 import com.putable.videx.std.vo.EditableTextLine;
-import com.putable.videx.std.vo.OIOImage;
 import com.putable.videx.std.vo.PopupTextLineEntry;
+import com.putable.videx.std.vo.image.OIOImage;
 
 @OIOTop
 public class BasicSlide extends EventAwareVO implements Slide {
