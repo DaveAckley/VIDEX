@@ -67,61 +67,64 @@ public class MouseVO extends StandardVO implements VO {
 
     @Override
     public boolean isMouseAware() {
-        // TODO Auto-generated method stub
+        // For now, mouseVO is not mouse aware, although it kind of could be
         return false;
     }
 
     @Override
     public boolean isFocusAware() {
-        // TODO Auto-generated method stub
+        // Not currently focus aware either
         return false;
     }
 
     @Override
     public void mouseEntered(Point2D at) {
-        // TODO Auto-generated method stub
-
+        // Don't care 
     }
 
     @Override
     public void mouseExited() {
-        // TODO Auto-generated method stub
-
+        // Don't care 
     }
 
     @Override
     public void dragAtStage(Point2D at, int state) {
-        // TODO Auto-generated method stub
-
+        // Don't care
     }
 
     @Override
     public boolean zoomAround(Point2D at, double amount) {
-        // TODO Auto-generated method stub
+        // Don't care, for now
         return false;
     }
 
     @Override
     public boolean rotateAround(Point2D at, double amount) {
-        // TODO Auto-generated method stub
+        // Don't care, for now, although it could be fun
         return false;
     }
 
     @Override
     public boolean handleMouseEvent(MouseEventInfo mei) {
-        // TODO Auto-generated method stub
+        // Don't care
         return false;
     }
 
     @Override
     public boolean handleKeyboardEvent(KeyboardEventInfo kei) {
-        // TODO Auto-generated method stub
+        // Don't care
+        return false;
+    }
+
+    @Override
+    public boolean handleSpecialEventHere(SpecialEventInfo mei) {
+        // Don't care
         return false;
     }
 
     @Override
     public boolean handleSpecialEvent(SpecialEventInfo mei) {
-        // TODO Auto-generated method stub
+        // Don't care
         return false;
     }
 
