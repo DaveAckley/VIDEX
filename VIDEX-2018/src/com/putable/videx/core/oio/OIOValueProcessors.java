@@ -2,6 +2,7 @@ package com.putable.videx.core.oio;
 
 import java.awt.Color;
 import java.awt.Rectangle;
+import java.awt.Shape;
 import java.awt.geom.Point2D;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -108,6 +109,30 @@ public class OIOValueProcessors {
                                     avs.get(3).getAsInt());
                     return ret;
                 });
+        o.add(Shape.class.getName(), true,
+                (value, map, add) -> {
+                    if (!(value instanceof Rectangle)) 
+                        throw new IllegalArgumentException("Rectangle only Shape supported");
+                    return 
+                            "[" + ((Rectangle) value).x +
+                            " " + ((Rectangle) value).y +
+                            " " + ((Rectangle) value).width +
+                            " " + ((Rectangle) value).height +
+                            "]";
+                },
+                (av, map) -> {
+                    List<ASTValue> avs = av.getArrayValue();
+                    if (avs==null) throw new IllegalStateException();
+                    if (avs.size() != 4) throw new IllegalArgumentException();
+                    Rectangle ret = 
+                            new Rectangle(
+                                    avs.get(0).getAsInt(),
+                                    avs.get(1).getAsInt(),
+                                    avs.get(2).getAsInt(),
+                                    avs.get(3).getAsInt());
+                    return ret;
+                });
+
         o.add(LinkedList.class.getName(), true,
                 (value, map, add) -> o.externalizeIterable((LinkedList<Object>) value, map, add),
                 (av, map) -> {
