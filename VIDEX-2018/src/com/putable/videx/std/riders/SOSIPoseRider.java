@@ -15,10 +15,18 @@ public class SOSIPoseRider extends StandardRider {
     public SOSIPoseRider() {
     }
 
+    /**
+     * Copy dest into the the SOSPoseRider's destination.
+     * @param dest Pose to head for
+     */
     public void copyTo(Pose dest) {
         mTo.copy(dest);
     }
 
+    /**
+     * Copy source into the the SOSPoseRider's starting point.
+     * @param source Pose to start from
+     */
     public void copyFrom(Pose source) {
         mFrom.copy(source);
     }
@@ -101,6 +109,14 @@ public class SOSIPoseRider extends StandardRider {
         return REACT_CONTINUE;
     }
 
+    public void setCurrentStep(int step) {
+        mCurrentStep = step;
+    }
+    
+    public int getCurrentStep() {
+        return mCurrentStep;
+    }
+    
     @Override
     public void act() {
         double fracdone = this.getTraveledFraction(mCurrentStep);
