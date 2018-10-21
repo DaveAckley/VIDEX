@@ -183,6 +183,7 @@ public class OIOSave {
                     field.setAccessible(true);
                     OIO ann = field.getAnnotation(OIO.class);
                     if (ann != null) {
+                        if (ann.obsolete()) continue; // Don't save obsolete fields
                         if (first) {
                             if (objectClass != startClass) {
                                 w.write("\n    // "
