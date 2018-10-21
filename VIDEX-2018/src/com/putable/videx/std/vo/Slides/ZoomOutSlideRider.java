@@ -6,7 +6,7 @@ import com.putable.videx.core.Pose;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.SlideDeck;
 
-public class ZoomOutRider extends BasicSlideRider {
+public class ZoomOutSlideRider extends BasicSlideRider {
     private static final double DEFAULT_START_SCALE = 4.0;
     private static final double DEFAULT_END_SCALE = .05;
 

@@ -2,13 +2,13 @@ package com.putable.videx.std.vo.Slides;
 
 import com.putable.videx.interfaces.Rider;
 
-public class ZoomOutRiderGenerator implements SlideRiderGenerator {
+public class ZoomOutSlideRiderGenerator implements SlideRiderGenerator {
 
     private int mOnum = -1;
 
     @Override
     public Rider generate() {
-        return new ZoomOutRider();
+        return new ZoomOutSlideRider();
     }
 
     @Override
