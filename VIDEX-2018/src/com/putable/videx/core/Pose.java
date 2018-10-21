@@ -42,14 +42,19 @@ public class Pose {
         }
     }
 
-    public Pose copy(Pose pose) {
-        setPAX(pose.getPAX());
-        setPAY(pose.getPAY());
-        setR(pose.getR());
-        setSX(pose.getSX());
-        setSY(pose.getSY());
-        setOAX(pose.getOAX());
-        setOAY(pose.getOAY());
+    /**
+     * Copy the given sourcePose to this
+     * @param sourcePose the pose to copy
+     * @return this
+     */
+    public Pose copy(Pose sourcePose) {
+        setPAX(sourcePose.getPAX());
+        setPAY(sourcePose.getPAY());
+        setR(sourcePose.getR());
+        setSX(sourcePose.getSX());
+        setSY(sourcePose.getSY());
+        setOAX(sourcePose.getOAX());
+        setOAY(sourcePose.getOAY());
         return this;
     }
 
