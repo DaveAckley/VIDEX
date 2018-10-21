@@ -83,7 +83,7 @@ public class TogglePresentationRider extends SOSIPoseRider {
     }
 
     @Override
-    public boolean handleKeyboardEvent(KeyboardEventInfo kei) {
+    public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
         VO veh = this.getVehicle();
         if (veh instanceof EventAwareVO) {
             EventAwareVO evo = (EventAwareVO) veh;
