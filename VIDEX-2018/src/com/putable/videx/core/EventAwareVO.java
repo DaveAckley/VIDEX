@@ -200,16 +200,28 @@ public abstract class EventAwareVO extends StandardVO {
                 return true;
         }
         for (Rider rider : this.getRiders()) {
-            if (rider.handleKeyboardEvent(kei))
+            if (rider.handleKeyboardEventHere(kei))
                 return true;
         }
         return isFocusAware() && handleKeyboardEventHere(kei);
     }
 
     @Override
-    public boolean handleSpecialEvent(SpecialEventInfo mei) {
-        throw new UnsupportedOperationException("XXX");
-        // return false;
+    public boolean handleSpecialEventHere(SpecialEventInfo sei) {
+        return false; // By default we don't handle special events.
+    }
+    
+    @Override
+    public boolean handleSpecialEvent(SpecialEventInfo sei) {
+        for (VO kid : this) {
+            if (kid.handleSpecialEvent(sei))
+                return true;
+        }
+        for (Rider rider : this.getRiders()) {
+            if (rider.handleSpecialEventHere(sei))
+                return true;
+        }
+        return handleSpecialEventHere(sei);
     }
 
 }

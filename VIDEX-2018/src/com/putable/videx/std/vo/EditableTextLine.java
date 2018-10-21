@@ -15,7 +15,7 @@ import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
 
 public class EditableTextLine extends EventAwareVO {
-    public class TextLineEnteredEventInfo extends SpecialEventInfo{
+    public class TextLineEnteredEventInfo extends SpecialEventInfo {
         private String mValue = null;
         public void setValue(String s) {
             mValue = s;

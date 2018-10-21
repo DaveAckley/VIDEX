@@ -15,11 +15,11 @@ import com.putable.videx.interfaces.World;
 public class StageVO extends StandardVO {
     private MouseVO mMouseVO = new MouseVO();
     private final World mWorld;
-    
+
     public World getWorld() {
         return mWorld;
     }
-    
+
     public MouseVO getMouseVO() {
         return mMouseVO;
     }
@@ -46,7 +46,8 @@ public class StageVO extends StandardVO {
     }
 
     public StageVO(World w) {
-        if (w == null) throw new IllegalArgumentException();
+        if (w == null)
+            throw new IllegalArgumentException();
         mWorld = w;
     }
 
@@ -95,6 +96,16 @@ public class StageVO extends StandardVO {
 
     @Override
     public boolean handleSpecialEvent(SpecialEventInfo mei) {
+        // StageVO DOES NOT PROPAGATE SPECIAL EVENTS
+        // The idea is you need to have enough clue to deliver them farther down
+        // the tree. We can revisit if we have to but we need some foggen
+        // defense against the dark arts here.
+        return false;
+    }
+
+    @Override
+    public boolean handleSpecialEventHere(SpecialEventInfo mei) {
+        // Do nothing
         return false;
     }
 
@@ -117,4 +128,5 @@ public class StageVO extends StandardVO {
     public void drawThisVO(VOGraphics2D v2d) {
         // Nothing directly to do to draw the stage itself
     }
+
 }

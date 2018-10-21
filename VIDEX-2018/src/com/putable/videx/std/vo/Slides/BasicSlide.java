@@ -22,6 +22,7 @@ import com.putable.videx.interfaces.Slide;
 import com.putable.videx.interfaces.SlideDeck;
 import com.putable.videx.interfaces.Stage;
 import com.putable.videx.std.riders.TogglePresentationRider;
+import com.putable.videx.std.specialevents.RunGenericSpecialEventInfo;
 import com.putable.videx.std.vo.EditableTextLine;
 import com.putable.videx.std.vo.PopupTextLineEntry;
 import com.putable.videx.std.vo.image.OIOImage;
@@ -56,7 +57,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
     @OIO
     private Color mBorderColor = Color.black;
 
-    @OIO
+    @OIO(obsolete=true)
     private LinkedList<Integer> mListOfNumbersDeleteMeXXX = new LinkedList<Integer>();
 
     @OIO
@@ -163,6 +164,11 @@ public class BasicSlide extends EventAwareVO implements Slide {
                             "Image file:", this.mLastImagePath));
                     return true;
                 }
+                if (ch == 'R') {
+                    RunGenericSpecialEventInfo runcmd = new RunGenericSpecialEventInfo();
+                    this.handleSpecialEvent(runcmd);
+                    return true;
+                }
             }
         }
         return false;
@@ -194,7 +200,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
     }
 
     @Override
-    public boolean handleSpecialEvent(SpecialEventInfo mei) {
+    public boolean handleSpecialEventHere(SpecialEventInfo mei) {
         if (mei instanceof EditableTextLine.TextLineEnteredEventInfo) {
             EditableTextLine.TextLineEnteredEventInfo info = (EditableTextLine.TextLineEnteredEventInfo) mei;
             String imgpath = (String) info.getValue();

@@ -1,6 +1,7 @@
 package com.putable.videx.interfaces;
 
 import com.putable.videx.core.events.KeyboardEventInfo;
+import com.putable.videx.core.events.SpecialEventInfo;
 
 /**
  * A Rider is associated with some VO and can observe and make changes to that
@@ -91,5 +92,7 @@ public interface Rider extends OIOAble {
      */
     void die();
     
-    boolean handleKeyboardEvent(KeyboardEventInfo kei);
+    boolean handleKeyboardEventHere(KeyboardEventInfo kei);
+
+    boolean handleSpecialEventHere(SpecialEventInfo sei);
 }

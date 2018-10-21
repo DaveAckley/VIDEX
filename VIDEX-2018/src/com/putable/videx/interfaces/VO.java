@@ -308,7 +308,8 @@ public interface VO extends Iterable<VO>, OIOAble {
     boolean handleKeyboardEvent(KeyboardEventInfo kei);
 
     /**
-     * Let this VO handle the special event described by sei if it wishes to
+     * Let this VO handle propagation of the special event described by sei if
+     * it wishes to
      * 
      * @param sei
      *            SpecialEventInfo to be potentially handled
@@ -316,6 +317,17 @@ public interface VO extends Iterable<VO>, OIOAble {
      *         stop, or false if this VO did not handle the event
      */
     boolean handleSpecialEvent(SpecialEventInfo mei);
+
+    /**
+     * Let this VO, itself, handle the special event described by sei if it
+     * wishes to.
+     * 
+     * @param sei
+     *            SpecialEventInfo to be potentially handled
+     * @return true iff the event has now been handled and propagation should
+     *         stop, or false if this VO did not handle the event
+     */
+    boolean handleSpecialEventHere(SpecialEventInfo mei);
 
     /**
      * Get the 24 bit hitmap color assigned to this VO, extended to 32 bits with
