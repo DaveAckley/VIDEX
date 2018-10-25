@@ -77,6 +77,9 @@ public abstract class StandardVO implements VO {
 
     private LinkedList<TriggerPoint> mPendingTriggerPoints = new LinkedList<TriggerPoint>();
 
+    @OIO
+    private String mComment = "";
+    
     @Override
     public TriggerPoint addPendingTriggerPoint(double tx, double ty) {
         TriggerPoint tp = new TriggerPoint(tx, ty);
@@ -103,10 +106,17 @@ public abstract class StandardVO implements VO {
     @OIO
     private LinkedList<Rider> mRiders = new LinkedList<Rider>();
 
-    public boolean addRider(Rider rider) {
-        if (mRiders.contains(rider))
-            return false;
-        mRiders.add(rider);
+    @OIO
+    private LinkedList<Rider> mPendingRiders = new LinkedList<Rider>();
+
+    public Rider findFirstRider(Class<? extends Rider> c) {
+        for (Rider r : mRiders) if (c.isInstance(r)) return r;
+        for (Rider r : mPendingRiders) if (c.isInstance(r)) return r;
+        return null;
+    }
+    
+    public boolean addPendingRider(Rider rider) {
+        mPendingRiders.add(rider);
         return true;
     }
 
@@ -346,6 +356,12 @@ public abstract class StandardVO implements VO {
             VO kid = mPending.remove();
             kid.setParent(this);
             mVO.add(kid);
+        }
+
+        // Incorporate any pending riders before doing update guts
+        while (mPendingRiders.size() > 0) {
+            Rider rider = mPendingRiders.remove();
+            mRiders.add(rider);
         }
 
         // Check for any reordering requests

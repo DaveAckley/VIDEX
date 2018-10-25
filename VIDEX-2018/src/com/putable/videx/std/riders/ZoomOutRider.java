@@ -10,6 +10,7 @@ import com.putable.videx.core.events.SpecialEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.VO;
 import com.putable.videx.std.specialevents.RunGenericSpecialEventInfo;
+import com.putable.videx.std.vo.TimedNotification;
 
 /**
  * ZoomOutRider is designed as part of the T2sday Update opening sequence. Its
@@ -29,9 +30,21 @@ import com.putable.videx.std.specialevents.RunGenericSpecialEventInfo;
  */
 public class ZoomOutRider extends SOSIPoseRider {
 
+    {
+        this.setDieOnComplete(false);
+    }
+    
+    @OIO
+    private boolean mHoldAtEnd = false;
+    
     @OIO
     private boolean mSequenceLeader = false;
 
+    private void toggleLeader(VO on) {
+        mSequenceLeader = !mSequenceLeader;
+        String state = "SequenceLeader: " + mSequenceLeader;
+        TimedNotification.postOn(on, state);
+    }
     @OIO
     private boolean mRiderActive = false;
 
@@ -72,7 +85,6 @@ public class ZoomOutRider extends SOSIPoseRider {
         StandardVO veh = this.getLastStandardVehicle();
         if (veh != null)
             veh.setEnabled(false);
-        // XXX NEED MAKE MOUNT INVISIBLE
     }
 
     private void gotoFinishing() {
@@ -102,15 +114,14 @@ public class ZoomOutRider extends SOSIPoseRider {
             veh.requestTop(); // may have display sequencing issue here..
         if (veh != null)
             veh.setEnabled(true);
-
-        // XXX NEED MAKE MOUNT VISIBLE
     }
 
     private boolean updateState() {
         switch (mCurrentState) {
         default:
         case STATE_FINAL_POSITION:
-            gotoFirstPosition();
+            if (!mHoldAtEnd)
+                gotoFirstPosition();
             return true;
         case STATE_FIRST_POSITION:
             return true;
@@ -150,28 +161,54 @@ public class ZoomOutRider extends SOSIPoseRider {
             if (!evo.isMouseTarget())
                 return false;
         }
-        if (kei.isKeyTyped('D')) {
+        if (kei.isKeyTyped('K')) {
             if (veh != null)
                 veh.killVO();
             return true;
         }
+        if (kei.isKeyTyped('s')) { // Toggle sequence leader
+            toggleLeader(veh);
+            return true;
+        }
+        
         if (kei.isKeyTyped('R')) { // Run
             triggerStart();
             return true;
         }
-        if (kei.isKeyTyped('a')) {
-            this.mRiderActive = !this.mRiderActive;
+        if (kei.isKeyTyped('D')) { // Disable veh
+            if (veh != null) veh.setEnabled(false);
             return true;
         }
-        if (kei.isKeyTyped('b')) { // begin position
+        if (kei.isKeyTyped('a')) {
+            this.mRiderActive = !this.mRiderActive;
+            if (veh != null) TimedNotification.postOn(veh, "RiderActive: "+this.mRiderActive);
+            return true;
+        }
+        if (kei.isKeyTyped('b')) { // set begin position
             if (veh != null) {
                 mStartPose.copy(veh.getPose());
+                TimedNotification.postOn(veh, "Set zoom begin: "+this.mStartPose);
             }
             return true;
         }
-        if (kei.isKeyTyped('e')) { // end position
+        if (kei.isKeyTyped('B')) { // goto begin position
+            if (veh != null) {
+                veh.getPose().copy(mStartPose);
+                TimedNotification.postOn(veh, "Current begin: "+this.mStartPose);
+            }
+            return true;
+        }
+        if (kei.isKeyTyped('e')) { // set end position
             if (veh != null) {
                 mEndPose.copy(veh.getPose());
+                TimedNotification.postOn(veh, "Set zoom end: "+this.mEndPose);
+            }
+            return true;
+        }
+        if (kei.isKeyTyped('E')) { // goto end position
+            if (veh != null) {
+                veh.getPose().copy(mEndPose);
+                TimedNotification.postOn(veh, "Current zoom end: "+this.mEndPose);
             }
             return true;
         }

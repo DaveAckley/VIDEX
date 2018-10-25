@@ -13,6 +13,7 @@ import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.core.oio.OIOException;
+import com.putable.videx.core.oio.OIOTop;
 import com.putable.videx.core.oio.save.OIOLoad;
 import com.putable.videx.core.oio.save.OIOSave;
 import com.putable.videx.drivers.OIOLoadConfiguration;
@@ -25,6 +26,7 @@ import com.putable.videx.interfaces.VO;
 import com.putable.videx.interfaces.World;
 import com.putable.videx.std.riders.SOSIPoseRider;
 
+@OIOTop
 public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
 
     private HTMLEditorKit mKit = new HTMLEditorKit();
@@ -143,7 +145,7 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
     private void changeSOSI(BasicSlide bs, Pose dest) {
         clearSOSIs(bs);
         SOSIPoseRider sosi = new SOSIPoseRider(dest);
-        bs.addRider(sosi);
+        bs.addPendingRider(sosi);
     }
     
     private void show(BasicSlide bs, int position) {

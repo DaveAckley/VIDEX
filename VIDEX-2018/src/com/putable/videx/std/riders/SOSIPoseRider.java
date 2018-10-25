@@ -54,15 +54,21 @@ public class SOSIPoseRider extends StandardRider {
         this.mDieOnComplete = mDieOnComplete;
     }
 
+    @OIO
+    private double mScalingExpt = 0.0;
+    
     private double getTraveledFraction(int steps) {
         if (steps <= 0)
             return 0.0;
         if (steps >= mMaxStep)
             return 1.0;
         double frac = (double) steps / mMaxStep;
-        double nonlin = 1 / (1
-                + Math.pow(Math.E, -mWidth * (2 * frac - 1) / mTemperature));
-        return nonlin;
+        if (mScalingExpt <= 0) {
+            double nonlin = 1 / (1
+                    + Math.pow(Math.E, -mWidth * (2 * frac - 1) / mTemperature));
+            return nonlin;
+        }
+        return Math.pow(frac, mScalingExpt);
     }
 
     @OIO(owned = false)

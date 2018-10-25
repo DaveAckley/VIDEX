@@ -6,6 +6,7 @@ import com.putable.videx.core.StandardVO;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.VO;
+import com.putable.videx.std.vo.TimedNotification;
 
 public class TogglePresentationRider extends SOSIPoseRider {
 
@@ -99,13 +100,20 @@ public class TogglePresentationRider extends SOSIPoseRider {
         }
         if (kei.isKeyTyped('a')) {
             this.mRiderActive = !this.mRiderActive;
+            if (veh != null) TimedNotification.postOn(veh, "RiderActive: "+this.mRiderActive);
             return true;
         }
         if (kei.isKeyTyped('p')) {
             if (veh != null) {
                 Pose pres = getPresentationPose();
                 pres.copy(veh.getPose());
-                System.out.println("PRES TO "+pres);
+                TimedNotification.postOn(veh, "Present pose: "+pres);
+            }
+            return true;
+        }
+        if (kei.isKeyTyped('r')) {
+            if (veh instanceof StandardVO) {
+                ((StandardVO) veh).requestTop();
             }
             return true;
         }
@@ -113,7 +121,7 @@ public class TogglePresentationRider extends SOSIPoseRider {
             if (veh != null) {
                 Pose stash = getStashedPose();
                 stash.copy(veh.getPose());
-                System.out.println("STASH TO "+stash);
+                TimedNotification.postOn(veh, "Stash pose: "+stash);
             }
             return true;
         }

@@ -20,4 +20,11 @@ public abstract class SpecialEventInfo extends IOEvent {
      * @return
      */
     public abstract Object getValue();
+
+    /**
+     * Access any callback stringload this special event info may be carrying
+     * 
+     * @return
+     */
+    public abstract String getStringLoad();
 }

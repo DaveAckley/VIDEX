@@ -1,8 +1,8 @@
 package com.putable.videx.std.specialevents;
 
-import com.putable.videx.core.events.SpecialEventInfo;
+import com.putable.videx.core.events.StandardSpecialEventInfo;
 
-public abstract class GenericSpecialEventInfo extends SpecialEventInfo {
+public abstract class GenericSpecialEventInfo extends StandardSpecialEventInfo {
 
     /**
      * {@inheritDoc}

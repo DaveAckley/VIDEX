@@ -3,21 +3,14 @@ package com.putable.videx.std.vo;
 import java.awt.Color;
 import java.awt.geom.Point2D;
 
-import com.putable.videx.core.EventAwareVO;
+import com.putable.videx.core.CallbackVO;
+import com.putable.videx.core.StandardVO;
 import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
-import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.Stage;
-import com.putable.videx.interfaces.VO;
 
-public class PopupTextLineEntry extends EventAwareVO {
-    @OIO(owned=false)
-    private VO mCallbackVO = null;
-    
-    public void setCallback(VO callback) {
-        mCallbackVO = callback;
-    }
+public class PopupTextLineEntry extends CallbackVO {
     
     public Label getLabel() {
         Label l = this.findFirstInstance(Label.class);
@@ -32,6 +25,7 @@ public class PopupTextLineEntry extends EventAwareVO {
         EditableTextLine etl = this.findFirstInstance(EditableTextLine.class);
         if (etl == null) {
             etl = new EditableTextLine(this,0,20); // ???
+            etl.setStringLoad(this.getStringLoad());
             this.addPendingChild(etl);
         }
         return etl;
@@ -53,8 +47,9 @@ public class PopupTextLineEntry extends EventAwareVO {
     
     public PopupTextLineEntry() { this(0,0); }
 
-    public PopupTextLineEntry(VO callback, String label, String inittext) {
+    public PopupTextLineEntry(StandardVO callback, String label, String inittext, String stringload) {
         this();
+        this.setStringLoad(stringload); // This has to go ahead of setEditableText..
         this.setLabel(label);
         this.setEditableText(inittext);
         this.setCallback(callback);
@@ -77,10 +72,12 @@ public class PopupTextLineEntry extends EventAwareVO {
         return true;
     }
 
+    /*
     @Override
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
         return true;
     }
+    */
 
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
@@ -88,13 +85,12 @@ public class PopupTextLineEntry extends EventAwareVO {
     }
 
     @Override
-    public boolean handleSpecialEvent(SpecialEventInfo mei) {
-        if (mei instanceof EditableTextLine.TextLineEnteredEventInfo) {
-            if (this.mCallbackVO != null)
-                this.mCallbackVO.handleSpecialEvent(mei);
-            this.killVO();
-            return true;
-        }
+    public boolean applicableEvent(SpecialEventInfo sei) {
+        return sei instanceof EditableTextLine.TextLineEnteredEventInfo;
+    }
+
+    @Override
+    public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
         return false;
     }
 

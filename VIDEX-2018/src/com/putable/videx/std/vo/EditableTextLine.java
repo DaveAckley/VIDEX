@@ -6,16 +6,17 @@ import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
 
-import com.putable.videx.core.EventAwareVO;
+import com.putable.videx.core.CallbackVO;
+import com.putable.videx.core.StandardVO;
 import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
+import com.putable.videx.core.events.StandardSpecialEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.Stage;
-import com.putable.videx.interfaces.VO;
 
-public class EditableTextLine extends EventAwareVO {
-    public class TextLineEnteredEventInfo extends SpecialEventInfo {
+public class EditableTextLine extends CallbackVO {
+    public class TextLineEnteredEventInfo extends StandardSpecialEventInfo {
         private String mValue = null;
         public void setValue(String s) {
             mValue = s;
@@ -29,12 +30,6 @@ public class EditableTextLine extends EventAwareVO {
     }
     {
         this.setIsFocusAware(true);
-    }
-    @OIO(owned=false)
-    private VO mCallbackVO = null;
-    
-    public void setCallback(VO callback) {
-        mCallbackVO = callback;
     }
     
     @OIO
@@ -88,7 +83,7 @@ public class EditableTextLine extends EventAwareVO {
 
     public EditableTextLine() { this(null,0,0); }
 
-    public EditableTextLine(VO callback, int x, int y) {
+    public EditableTextLine(StandardVO callback, int x, int y) {
         this.setCallback(callback);
         this.setBackground(Color.BLUE);
         this.setForeground(Color.WHITE);
@@ -119,10 +114,12 @@ public class EditableTextLine extends EventAwareVO {
             return false; // Sorry can't deal with unicode yet
         if (Character.isISOControl(code)) {
             if (code == '\n') {
-                if (mCallbackVO != null) {
+                StandardVO cb = this.getCallback();
+                if (cb != null) {
                     TextLineEnteredEventInfo info = new TextLineEnteredEventInfo();
                     info.setValue(this.mText);
-                    mCallbackVO.handleSpecialEvent(info);
+                    info.setStringLoad(this.getStringLoad());
+                    cb.handleSpecialEvent(info);
                 }
                 this.killVO();
             }
@@ -200,5 +197,11 @@ public class EditableTextLine extends EventAwareVO {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean applicableEvent(SpecialEventInfo sei) {
+        throw new IllegalStateException(); // not used?
+        //return false;
     }
 }

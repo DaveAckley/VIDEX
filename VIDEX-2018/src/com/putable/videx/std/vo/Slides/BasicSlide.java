@@ -21,10 +21,13 @@ import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.Slide;
 import com.putable.videx.interfaces.SlideDeck;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.interfaces.VO;
 import com.putable.videx.std.riders.TogglePresentationRider;
+import com.putable.videx.std.riders.ZoomOutRider;
 import com.putable.videx.std.specialevents.RunGenericSpecialEventInfo;
 import com.putable.videx.std.vo.EditableTextLine;
 import com.putable.videx.std.vo.PopupTextLineEntry;
+import com.putable.videx.std.vo.TimedNotification;
 import com.putable.videx.std.vo.image.OIOImage;
 
 @OIOTop
@@ -94,12 +97,9 @@ public class BasicSlide extends EventAwareVO implements Slide {
     }
 
     private void checkRider() {
-        for (Rider r : this.getRiders()) {
-            if (r instanceof BasicSlideRider)
-                return;
-        }
+        if (this.findFirstRider(BasicSlideRider.class) != null) return;
         BasicSlideRider bsr = (BasicSlideRider) this.mRiderGenerator.generate();
-        this.addRider(bsr);
+        this.addPendingRider(bsr);
     }
 
     @Override
@@ -159,14 +159,21 @@ public class BasicSlide extends EventAwareVO implements Slide {
             KeyEvent ke = kei.getKeyEvent();
             if (ke.getID() == KeyEvent.KEY_TYPED) {
                 char ch = ke.getKeyChar();
-                if (ch == 'I') {
+                if (ch == 'I' || ch == 'Z') {
                     this.addPendingChild(new PopupTextLineEntry(this,
-                            "Image file:", this.mLastImagePath));
+                            "Image file:", this.mLastImagePath,""+ch));
                     return true;
                 }
                 if (ch == 'R') {
                     RunGenericSpecialEventInfo runcmd = new RunGenericSpecialEventInfo();
                     this.handleSpecialEvent(runcmd);
+                    return true;
+                }
+                if (ch == 'E') {
+                    for (VO vo : this) {
+                        vo.setEnabled(true);
+                    }
+                    TimedNotification.postOn(this, "Kids enabled");
                     return true;
                 }
             }
@@ -188,12 +195,17 @@ public class BasicSlide extends EventAwareVO implements Slide {
     @OIO
     private String mLastImagePath = "";
 
-    private void tryAddImage(String imgpath) {
+    private void tryAddImage(String imgpath,String stringload) {
         OIOImage img = OIOImage.makeFromPath(imgpath);
         if (img == null) 
             System.out.println("Couldn't make image from "+imgpath);
         else {
-            img.addRider(new TogglePresentationRider());
+            Rider r;
+            if (stringload.equals("I")) r = new TogglePresentationRider();
+            else if (stringload.equals("Z"))
+                r = new ZoomOutRider();
+            else throw new IllegalArgumentException("What's a '"+stringload+"'?");
+            img.addPendingRider(r);
             mLastImagePath = imgpath;
             this.addPendingChild(img);
         }
@@ -204,7 +216,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
         if (mei instanceof EditableTextLine.TextLineEnteredEventInfo) {
             EditableTextLine.TextLineEnteredEventInfo info = (EditableTextLine.TextLineEnteredEventInfo) mei;
             String imgpath = (String) info.getValue();
-            tryAddImage(imgpath);
+            tryAddImage(imgpath,info.getStringLoad());
             return true;
         }
         return false;

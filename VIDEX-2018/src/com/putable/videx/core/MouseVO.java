@@ -52,6 +52,9 @@ public class MouseVO extends StandardVO implements VO {
     };
     private static final int arrowXOffset = 0;
     private static final int arrowYOffset = 35;
+    {
+        this.setEnabled(false); // XXX WE'RE CAPTURING THE REAL MOUSE INSTEAD ? :(
+    }
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
         if (v2d.isRenderingToHitmap()) return;
