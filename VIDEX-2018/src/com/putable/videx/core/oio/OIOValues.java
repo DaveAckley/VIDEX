@@ -58,7 +58,7 @@ public class OIOValues {
         String typename = fc.getName();
         OIOValue oiv = this.get(typename);
         if (oiv != null) return oiv.externalize(val, map, addrefs);
-        throw new OIOException("Unhandled member type: " + fc + " for " + val);
+        throw new OIOException("Unhandled member type: " + fc + " (" + typename + ") for " + val);
     }
 
     @SuppressWarnings("rawtypes") // Not sure how to conform stream::iterator stuff without this
