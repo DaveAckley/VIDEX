@@ -47,7 +47,7 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
     private void checkLoadCSS() {
         if (this.mCSS != null && this.mCSS != this.mInstalledCSS) {
             StyleSheet s = mKit.getStyleSheet();
-            
+
             s.addRule(this.mCSS);
             this.mInstalledCSS = this.mCSS;
         }
