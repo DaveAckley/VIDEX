@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import com.putable.videx.core.Pose;
 import com.putable.videx.core.oio.load.ParseException;
@@ -202,6 +204,60 @@ public class OIOValueProcessors {
                     }
                     return ret;
                 });
+// XXX WHEN AND HOW ARE WE EVER GOING TO DEAL WITH INBOUND
+// TYPE NAMES NOT HAVING GENERIC TYPES BUT OUTBOUND NAMES 
+// HAVING THEM SO WE ARE CREATING MULTIPLE ENTRIES HERE?        
+        o.add(TreeMap.class.getName(), true,
+                (value, map, add) -> o.externalizeIterable(((TreeMap<Object,Object>) value).entrySet(), map, add),
+                (av, map) -> {
+                    List<ASTValue> avs = av.getArrayValue();
+                    if (avs==null) throw new IllegalStateException();
+                    TreeMap<String,String> ret = new TreeMap<String,String>();
+                    for (ASTValue avi : avs) {
+                        List<ASTValue> avs2 = avi.getArrayValue();
+                        String k = avs2.get(0).getAsString();
+                        String v = avs2.get(1).getAsString();
+                        ret.put(k, v);
+                    }
+                    return ret;
+                });
+
+        o.add("java.util.TreeMap<java.lang.String, java.lang.String>", true,
+                (value, map, add) -> o.externalizeIterable(((TreeMap<Object,Object>) value).entrySet(), map, add),
+                (av, map) -> {
+                    List<ASTValue> avs = av.getArrayValue();
+                    if (avs==null) throw new IllegalStateException();
+                    TreeMap<String,String> ret = new TreeMap<String,String>();
+                    for (ASTValue avi : avs) {
+                        List<ASTValue> avs2 = avi.getArrayValue();
+                        String k = avs2.get(0).getAsString();
+                        String v = avs2.get(1).getAsString();
+                        ret.put(k, v);
+                    }
+                    return ret;
+                });
+
+        o.add("java.util.TreeMap$Entry", true,
+                (value, map, add) -> {
+                    Map.Entry<Object,Object> kv = (Map.Entry<Object,Object>) value;
+                    String k = (String) kv.getKey();
+                    String v = (String) kv.getValue();
+                    return String.format("[%s %s]", 
+                            Token.escapeQuotedString(k),
+                            Token.escapeQuotedString(v));
+                }, 
+                (av, map) -> {
+                    List<ASTValue> avs = av.getArrayValue();
+                    if (avs==null) throw new IllegalStateException();
+                    TreeMap<String,String> ret = new TreeMap<String,String>();
+                    for (ASTValue avi : avs) {
+                        List<ASTValue> avs2 = avi.getArrayValue();
+                        String k = avs2.get(0).getAsString();
+                        String v = avs2.get(1).getAsString();
+                        ret.put(k, v);
+                    }
+                    return ret;
+                });
 
         o.add("java.util.LinkedList<com.putable.videx.interfaces.VO>", true,
                 (value, map, add) -> o.externalizeIterable((LinkedList<Object>) value, map, add),
@@ -212,6 +268,8 @@ public class OIOValueProcessors {
                     for (ASTValue avi : avs) {
                         int onum = avi.getAsOnum();
                         OIOAble oio = map.get(onum);
+                        if (oio == null)
+                            throw new ParseException(avi.getToken(), "Undefined onum");
                         if (!(oio instanceof VO)) 
                             throw new ParseException(avi.getToken(), "Not a VO");
                         ret.add((VO) oio);
