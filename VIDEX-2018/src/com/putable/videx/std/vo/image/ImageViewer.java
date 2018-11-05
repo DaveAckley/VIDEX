@@ -24,10 +24,16 @@ public abstract class ImageViewer extends EventAwareVO {
         ret = new HittableImage(this);
         ret.setImageFromBytesIfPossible(path.toString(), data);
         ret.setAlphaHittable(false);
+        ret.setImagePath(path);
         return ret;
     }
 
-    private HittableImage getCurrentImage() {
+    public HittableImage getCurrentImage() {
+        if (mImages[1] == null) {
+            if (this.goForward() || this.goBackward()) { // Hope for something!
+                /* EMPTY */
+            } 
+        }
         return mImages[1];
     }
     
@@ -56,7 +62,7 @@ public abstract class ImageViewer extends EventAwareVO {
         Graphics2D g2d = v2d.getGraphics2D();
         HittableImage img = this.getCurrentImage();
         if (img == null)
-            g2d.drawString("NO CURRENT IMAGE", 0, 0);
+            g2d.drawString("NO CURRENT IMAGE", 100, 100);
         else 
             img.drawImage(v2d, 0, 0);
     }
