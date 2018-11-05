@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 import javax.imageio.ImageIO;
 
@@ -14,11 +15,14 @@ import com.putable.videx.interfaces.VO;
 public class HittableImage {
 
     private final VO mForVO;
+    private Path mImagePath = null;
     private boolean mAlphaHittable = true;
     private BufferedImage mImage = null;
     private BufferedImage mHitmapImage = null;
     private boolean mLastLoadGood = false;
 
+    public Path getImagePath() { return mImagePath; }
+    public void setImagePath(Path path) { mImagePath = path; }
     public void setAlphaHittable(boolean to) {
         mAlphaHittable = to;
     }
