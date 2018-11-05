@@ -316,7 +316,7 @@ public class OIOSave {
         OIOValue oiv = mOIOValues.get(typename);
         if (oiv != null)
             return oiv.externalize(val, map, addrefs);
-        throw new OIOException("Unhandled member type: " + fc + " for " + val);
+        throw new OIOException("Unhandled member type: " + fc + " (" + typename +") for " + val);
     }
 
     public void save(OIOAble theOneAndOnlyTop, OIOAbleGlobalMap omap)
