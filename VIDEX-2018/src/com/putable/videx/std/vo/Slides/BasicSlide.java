@@ -29,6 +29,7 @@ import com.putable.videx.std.vo.EditableTextLine;
 import com.putable.videx.std.vo.PopupTextLineEntry;
 import com.putable.videx.std.vo.TimedNotification;
 import com.putable.videx.std.vo.image.OIOImage;
+import com.putable.videx.utils.FileUtils;
 
 @OIOTop
 public class BasicSlide extends EventAwareVO implements Slide {
@@ -162,6 +163,10 @@ public class BasicSlide extends EventAwareVO implements Slide {
                 if (ch == 'I' || ch == 'Z') {
                     this.addPendingChild(new PopupTextLineEntry(this,
                             "Image file:", this.mLastImagePath,""+ch));
+                    return true;
+                }
+                if (ch == '#') {
+                    TimedNotification.postOn(this, "Slide: " + FileUtils.toLex(this.getOnum()));
                     return true;
                 }
                 if (ch == 'R') {
