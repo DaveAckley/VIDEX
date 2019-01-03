@@ -33,8 +33,13 @@ import com.putable.videx.utils.FileUtils;
 
 @OIOTop
 public class BasicSlide extends EventAwareVO implements Slide {
+
+    {
+        this.setIsFocusAware(true);
+    }
+    
     @OIO
-    private Point2D mSlideSize = new Point2D.Double(640, 360);
+    private Point2D mSlideSize = new Point2D.Double(500, 400);
 
     @OIO
     private String mSlideName = null;
@@ -65,7 +70,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
     private LinkedList<Integer> mListOfNumbersDeleteMeXXX = new LinkedList<Integer>();
 
     @OIO
-    private SlideRiderGenerator mRiderGenerator = new BasicSlideRiderGenerator();
+    private SlideRiderGenerator mRiderGenerator = new ThreeStopRiderGenerator();
 
     @Override
     public String getSlideName() {
@@ -198,7 +203,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
     }
 
     @OIO
-    private String mLastImagePath = "";
+    private String mLastImagePath = "/data/ackley/AV/MFM/T2sdayUpdate/episodes/";
 
     private void tryAddImage(String imgpath,String stringload) {
         OIOImage img = OIOImage.makeFromPath(imgpath);
@@ -226,4 +231,5 @@ public class BasicSlide extends EventAwareVO implements Slide {
         }
         return false;
     }
+
 }
