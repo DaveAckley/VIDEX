@@ -212,6 +212,13 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
         if (ke.getID() != KeyEvent.KEY_TYPED) return false;
         //if (ke.getKeyChar() == '\022') return reload(); //^R
         if (ke.getKeyChar() == '\023') return checkpointSave(); //^S
+        if (ke.getKeyChar() == '\001') { //^A - add another slide
+            BasicSlide bs = new BasicSlide("Unnamed slide");
+            bs.theHTML("<HTML>\n<H1>Unwritten slide</H2>");
+            this.addPendingChild(bs);
+            System.out.println("MADE "+bs);
+            return true;
+        }
         return false;
     }
 
