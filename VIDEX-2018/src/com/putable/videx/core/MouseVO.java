@@ -13,7 +13,7 @@ import com.putable.videx.interfaces.VO;
 
 public class MouseVO extends StandardVO implements VO {
     private Point2D mMousePoint = new Point2D.Float();
-    public static final int UPDATES_UNTIL_HIDING = 50;
+    public static final int UPDATES_UNTIL_HIDING = 25;
     private int mHideTimer = UPDATES_UNTIL_HIDING;
     public MouseVO() {
         this.setBackground(Color.DARK_GRAY);
@@ -53,7 +53,7 @@ public class MouseVO extends StandardVO implements VO {
     private static final int arrowXOffset = 0;
     private static final int arrowYOffset = 35;
     {
-        this.setEnabled(false); // XXX WE'RE CAPTURING THE REAL MOUSE INSTEAD ? :(
+        this.setEnabled(true); // XXX WE'RE CAPTURING THE REAL MOUSE INSTEAD ? :(
     }
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
