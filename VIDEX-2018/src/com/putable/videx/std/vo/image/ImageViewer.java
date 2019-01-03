@@ -61,9 +61,10 @@ public abstract class ImageViewer extends EventAwareVO {
     public void drawThisVO(VOGraphics2D v2d) {
         Graphics2D g2d = v2d.getGraphics2D();
         HittableImage img = this.getCurrentImage();
-        if (img == null)
+        if (img == null) {
+            g2d.clearRect(0, 0, 1000,1000);
             g2d.drawString("NO CURRENT IMAGE", 100, 100);
-        else 
+        } else 
             img.drawImage(v2d, 0, 0);
     }
 
