@@ -226,7 +226,6 @@ public class TimeLinePlayer extends ImageViewer {
 
     @Override
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
-         System.out.println("TLP HKEH "+kei+" ISMT "+isMouseTarget() + this.getPose());
         if (isMouseTarget()) {
             KeyEvent ke = kei.getKeyEvent();
             if (ke.getID() == KeyEvent.KEY_TYPED) {
