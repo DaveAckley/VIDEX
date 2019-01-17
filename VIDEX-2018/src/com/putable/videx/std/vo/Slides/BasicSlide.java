@@ -12,6 +12,7 @@ import javax.swing.SwingConstants;
 
 import com.putable.videx.core.EventAwareVO;
 import com.putable.videx.core.Fonts;
+import com.putable.videx.core.Pose;
 import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
@@ -79,6 +80,11 @@ public class BasicSlide extends EventAwareVO implements Slide {
         return mSlideName;
     }
 
+    @Override
+    public String toString() {
+        String snip = getText().replace('\n', '.').substring(0, 40);
+        return super.toString() + "["+snip+"]";
+    }
     public void setSlideName(String name) {
         mSlideName = name;
     }
@@ -122,9 +128,10 @@ public class BasicSlide extends EventAwareVO implements Slide {
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
         Graphics2D g2d = v2d.getGraphics2D();
-        if (mDrawBackground)
+        if (mDrawBackground) {
             g2d.clearRect(0, 0, (int) mSlideSize.getX(),
                     (int) mSlideSize.getY());
+        }
 
         if (v2d.isRenderingToHitmap())
             return;
@@ -184,6 +191,15 @@ public class BasicSlide extends EventAwareVO implements Slide {
                         vo.setEnabled(true);
                     }
                     TimedNotification.postOn(this, "Kids enabled");
+                    return true;
+                }
+                if (ch == '*') {
+                    Pose p = new Pose();
+                    for (VO vo : this) {
+                        System.out.println("PRE*POSE "+vo+" = "+vo.getPose());
+                        vo.getPose().copy(p);
+                    }
+                    TimedNotification.postOn(this, "Kids REPOSED*");
                     return true;
                 }
             }
