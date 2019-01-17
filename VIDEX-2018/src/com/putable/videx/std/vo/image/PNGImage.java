@@ -7,7 +7,10 @@ import com.putable.videx.core.oio.OIOTop;
 public class PNGImage extends OIOImage {
     @OIO(inline = false, extension = "png")
     private byte[] mData = null;
-
+    protected void setImageData(byte[] data) {
+        if (mData != null) throw new IllegalStateException();
+        mData = data;
+    }
     public PNGImage() { }
     public PNGImage(byte[] data) {
         mData = data;
