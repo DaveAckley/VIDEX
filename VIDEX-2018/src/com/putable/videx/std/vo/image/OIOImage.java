@@ -28,7 +28,10 @@ public abstract class OIOImage extends EventAwareVO {
 
     @OIO
     private String mImageName = "";
-
+    protected void setImageName(String name) {
+        mImageName = name;
+    }
+    
     /**
      * Obtain image data for this image
      * 
