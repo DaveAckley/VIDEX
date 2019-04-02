@@ -11,7 +11,7 @@ public class ThreeStopRider extends BasicSlideRider {
         this.mMaxStep = 15;
         this.mWidth = 4.5;
         mYPos[0] = mStartY;
-        mYPos[1] = 150;
+        mYPos[1] = 110;
         mYPos[2] = mEndY;
     }
 
