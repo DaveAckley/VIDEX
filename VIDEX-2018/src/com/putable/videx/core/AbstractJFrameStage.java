@@ -3,11 +3,13 @@ package com.putable.videx.core;
 import java.awt.Dimension;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.image.BufferedImage;
 
 import javax.swing.JFrame;
 import javax.swing.event.MouseInputAdapter;
@@ -48,6 +50,12 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
             this.setSize(dim.width, dim.height - 40); // minus task bar
             this.setResizable(true);
         }
+
+        // Suppress hardware cursor in favor of our (autodisappearing) own
+        this.setCursor( this.getToolkit().createCustomCursor(
+                new BufferedImage( 1, 1, BufferedImage.TYPE_INT_ARGB ),
+                new Point(),
+                null ) );
         
         mStagePanel = new StagePanel(this.mHitmap, this.getRoot(), this.getWidth(), this.getHeight());
         this.setContentPane(mStagePanel); // Set as content pane for this JFrame
