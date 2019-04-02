@@ -108,6 +108,8 @@ public abstract class ReadOnlyDirectoryManager extends EventAwareVO {
         if (mDirectory == null)
             throw new IllegalStateException();
         File[] files = mDirectory.toFile().listFiles();
+        if (files == null)
+            throw new IllegalStateException("Bad directory: "+mDirectory);
         Arrays.sort(files);
         mPaths.clear();
         mGenerationNumber++;
