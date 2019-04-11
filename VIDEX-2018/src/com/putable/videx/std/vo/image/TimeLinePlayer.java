@@ -11,6 +11,7 @@ import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.Stage;
 import com.putable.videx.std.vo.TimedNotification;
+import com.putable.videx.std.vo.ReadOnlyDirectoryManager;
 import com.putable.videx.std.vo.ReadOnlyDirectoryManager.RODMIterator;
 
 public class TimeLinePlayer extends ImageViewer {
@@ -18,6 +19,11 @@ public class TimeLinePlayer extends ImageViewer {
     @OIO(owned = false)
     private PNGImageDirectoryManager mImageDirectory = null;
     private RODMIterator mIterator = null;
+
+    @Override
+    public ReadOnlyDirectoryManager getPersistentStateManager() {
+        return mImageDirectory;
+    }
 
     @OIO
     private boolean mShowAll = true;
@@ -247,9 +253,10 @@ public class TimeLinePlayer extends ImageViewer {
                     return true;
                 }
             }
-            return false;
+            return super.handleKeyboardEventHere(kei);
         }
         return false;
     }
+
 
 }
