@@ -167,6 +167,36 @@ public class Pose {
     private double mSX = 1.0f, mSY = 1.0f; // Scaling around (mOAX,mOAY) in our
                                            // frame
 
+    public String stringify() {
+        return ""
+                +getPAX()+","
+                +getPAY()+","
+                +getR()+","
+                +getOAX()+","
+                +getOAY()+","
+                +getSX()+","
+                +getSY();
+    }
+    
+    public static Pose destringify(String str) {
+        String[] strs = str.split(",");
+        if (strs.length != 7) return null;
+        try {
+            Pose p = new Pose();
+            p.mPAX = Double.parseDouble(strs[0]);
+            p.mPAY = Double.parseDouble(strs[1]);
+            p.mR   = Double.parseDouble(strs[2]);
+            p.mOAX = Double.parseDouble(strs[3]);
+            p.mOAY = Double.parseDouble(strs[4]);
+            p.mSX  = Double.parseDouble(strs[5]);
+            p.mSY  = Double.parseDouble(strs[6]);
+            return p;
+        }
+        catch (NumberFormatException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     @Override
     public String toString() {
         return String.format("(%.1f, %.1f, @%.1f + (%.1f ,%.1f), *%.1f, %.1f)",

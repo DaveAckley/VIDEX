@@ -7,13 +7,16 @@ import java.util.ListIterator;
 
 import com.putable.videx.core.EventAwareVO;
 import com.putable.videx.core.HittableImage;
+import com.putable.videx.core.Pose;
 import com.putable.videx.core.VOGraphics2D;
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.std.vo.ReadOnlyDirectoryManager;
 import com.putable.videx.utils.FileUtils;
 
 public abstract class ImageViewer extends EventAwareVO {
     public abstract ListIterator<Path> pathPosition() ;
+    public abstract ReadOnlyDirectoryManager getPersistentStateManager() ;
     
     private HittableImage[] mImages = { null, null, null }; // prev curr next    
     
@@ -28,6 +31,21 @@ public abstract class ImageViewer extends EventAwareVO {
         return ret;
     }
 
+    private void configureFromHittableImage(HittableImage hi) {
+        if (hi != null) {
+            Path name = hi.getImagePath().getFileName();
+            ReadOnlyDirectoryManager rodm = this.getPersistentStateManager();
+            if (rodm != null) {
+                String layout = rodm.getPersistentDataFor(name);
+                if (layout != null) {
+                    Pose p = Pose.destringify(layout);
+                    if (p != null)
+                        this.getPose().copy(p);
+                }
+            }
+        }
+    }
+
     public HittableImage getCurrentImage() {
         if (mImages[1] == null) {
             if (this.goForward() || this.goBackward()) { // Hope for something!
@@ -36,7 +54,17 @@ public abstract class ImageViewer extends EventAwareVO {
         }
         return mImages[1];
     }
-    
+
+    private void persistCurrentImageVO() {
+        HittableImage hi = getCurrentImage();
+        if (hi == null) return;
+        ReadOnlyDirectoryManager rodm = getPersistentStateManager();
+        if (rodm == null) return;
+        Path p = hi.getImagePath().getFileName();
+        String layout = this.getPose().stringify();
+        rodm.updatePersistentDataFor(p, layout);
+    }
+
     public boolean goForward() {
         ListIterator<Path> itr = pathPosition();
         if (!itr.hasNext()) return false;
@@ -44,6 +72,7 @@ public abstract class ImageViewer extends EventAwareVO {
         mImages[0] = mImages[1];
         mImages[1] = mImages[2];
         mImages[2] = tryLoadImage(p);
+        this.configureFromHittableImage(mImages[1]);
         return true;
     }
 
@@ -54,6 +83,7 @@ public abstract class ImageViewer extends EventAwareVO {
         mImages[2] = mImages[1];
         mImages[1] = mImages[0];
         mImages[0] = tryLoadImage(p);
+        this.configureFromHittableImage(mImages[1]);
         return true;
     }
 
@@ -96,10 +126,16 @@ public abstract class ImageViewer extends EventAwareVO {
                     this.goBackward();
                     return true;
                 }
+                if (ch == 'p') {
+                    System.err.println("YOINK");
+                    this.persistCurrentImageVO();
+                    return true;
+                }
             }
             return false;
         }
         return false;
     }
+
 
 }
