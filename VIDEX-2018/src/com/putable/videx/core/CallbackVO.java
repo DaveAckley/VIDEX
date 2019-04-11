@@ -1,15 +1,7 @@
 package com.putable.videx.core;
 
-import java.awt.Color;
-import java.awt.geom.Point2D;
-
-import com.putable.videx.core.EventAwareVO;
-import com.putable.videx.core.VOGraphics2D;
-import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
 import com.putable.videx.core.oio.OIO;
-import com.putable.videx.interfaces.Stage;
-import com.putable.videx.interfaces.VO;
 
 public abstract class CallbackVO extends EventAwareVO {
     @OIO(owned=false)
