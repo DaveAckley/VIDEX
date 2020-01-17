@@ -1,5 +1,6 @@
 package com.putable.videx.std.vo.image;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
 import java.nio.file.Path;
@@ -90,7 +91,7 @@ public abstract class ImageViewer extends EventAwareVO {
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
         Graphics2D g2d = v2d.getGraphics2D();
-        // System.out.println("DTVO "+this);
+        //System.out.println("DTVO "+this);
         HittableImage img = this.getCurrentImage();
         // Grab some territory image or no?
         g2d.fillRect(0, 0, 1000,1000);

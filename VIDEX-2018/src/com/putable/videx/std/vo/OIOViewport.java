@@ -1,5 +1,6 @@
 package com.putable.videx.std.vo;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.geom.Point2D;
@@ -96,6 +97,7 @@ DON'T NEED THIS NOW?
                 mViewport.width+2*mBorderSize, 
                 mViewport.height+2*mBorderSize);
         g2d.fill(r);
+
         g2d.setColor(this.getBackground());
         g2d.draw(mViewport);
     }

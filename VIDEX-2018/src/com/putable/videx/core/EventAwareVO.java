@@ -114,7 +114,7 @@ public abstract class EventAwareVO extends StandardVO {
             this.getPose().setPAY((float) (deltaParentVOC.getY()));
             this.updatePoseTransform();
             System.out.printf("YONG (%d,%d)\n", (int) deltaParentVOC.getX(),
-                    (int) deltaParentVOC.getY());
+                   (int) deltaParentVOC.getY());
         }
     }
 
