@@ -1,10 +1,9 @@
 package com.putable.videx.std.vo.image;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
+import java.awt.geom.Point2D;
 import java.nio.file.Path;
-import java.util.ListIterator;
 
 import com.putable.videx.core.EventAwareVO;
 import com.putable.videx.core.HittableImage;
@@ -16,12 +15,18 @@ import com.putable.videx.std.vo.ReadOnlyDirectoryManager;
 import com.putable.videx.utils.FileUtils;
 
 public abstract class ImageViewer extends EventAwareVO {
-    public abstract ListIterator<Path> pathPosition() ;
     public abstract ReadOnlyDirectoryManager getPersistentStateManager() ;
     
+    private boolean mInitted = false;
+    private int mPathIndex; // The RODM index of mImages[1]
+    private int mPathCount;
     private HittableImage[] mImages = { null, null, null }; // prev curr next    
-    
+    public HittableImage tryLoadImageIndex(int index) {
+        Path path = getPersistentStateManager().getPath(index);
+        return tryLoadImage(path);
+    }
     public HittableImage tryLoadImage(Path path) {
+        if (path == null) return null;
         HittableImage ret = null;
         byte[] data = FileUtils.readWholeFileAsByteArray(path);
         if (data == null) return ret;
@@ -35,19 +40,24 @@ public abstract class ImageViewer extends EventAwareVO {
     private void configureFromHittableImage(HittableImage hi) {
         if (hi != null) {
             Path name = hi.getImagePath().getFileName();
+            System.out.println("CONHITIM FOR "+name);
             ReadOnlyDirectoryManager rodm = this.getPersistentStateManager();
             if (rodm != null) {
+                Pose p = null;
                 String layout = rodm.getPersistentDataFor(name);
                 if (layout != null) {
-                    Pose p = Pose.destringify(layout);
-                    if (p != null)
-                        this.getPose().copy(p);
+                    System.out.println("CONHITIM LAYOUT "+layout);
+                    p = Pose.destringify(layout);
                 }
+                if (p == null)
+                    p = hi.makeDefaultPose();
+                this.getPose().copy(p);
             }
         }
     }
 
     public HittableImage getCurrentImage() {
+        initIfNeeded();
         if (mImages[1] == null) {
             if (this.goForward() || this.goBackward()) { // Hope for something!
                 /* EMPTY */
@@ -66,25 +76,53 @@ public abstract class ImageViewer extends EventAwareVO {
         rodm.updatePersistentDataFor(p, layout);
     }
 
+    private void initIfNeeded() {
+        if (mInitted) return;
+        mPathCount = getPersistentStateManager().getPathCount();
+
+        for (int i = 0; i < 3; ++i)  mImages[i] = tryLoadImageIndex(i-1);
+        
+        mPathIndex = 0;
+        mInitted = true;
+
+        if (mImages[1] != null)
+            resetCurrentImageVOToPersisted();
+    }
+    
+    private void printImages(String msg) {
+        System.out.print(msg+" (@"+mPathIndex+") ");
+        for (int i = 0; i < mImages.length; ++i) {
+            System.out.print(i+"="+mImages[i]+" ");
+        }
+        System.out.println();
+    }
     public boolean goForward() {
-        ListIterator<Path> itr = pathPosition();
-        if (!itr.hasNext()) return false;
-        Path p = itr.next();
+        initIfNeeded();
+        printImages("goF PRE");
+
+        // itr invariant is previous() returns onscreen ([1]) and next() returns ondeck([2])
+
+        if (mImages[2] == null) return false; // no place to advance to
         mImages[0] = mImages[1];
         mImages[1] = mImages[2];
-        mImages[2] = tryLoadImage(p);
+        ++mPathIndex;
+        mImages[2] = tryLoadImageIndex(mPathIndex+1);
         this.configureFromHittableImage(mImages[1]);
+        printImages("goF POST");
         return true;
     }
 
     public boolean goBackward() {
-        ListIterator<Path> itr = pathPosition();
-        if (!itr.hasPrevious()) return false;
-        Path p = itr.previous();
-        mImages[2] = mImages[1];
-        mImages[1] = mImages[0];
-        mImages[0] = tryLoadImage(p);
+        initIfNeeded();
+        printImages("gob PRE");
+
+        if (mImages[0] == null) return false; // no place to retreat to
+        mImages[2] = mImages[1];  // Ondeck is old onscreen
+        mImages[1] = mImages[0];  // Onscreen is old previous
+        --mPathIndex;
+        mImages[0] = tryLoadImageIndex(mPathIndex-1);
         this.configureFromHittableImage(mImages[1]);
+        printImages("gob POST");
         return true;
     }
 
@@ -132,10 +170,17 @@ public abstract class ImageViewer extends EventAwareVO {
                     this.persistCurrentImageVO();
                     return true;
                 }
+                if (ch == 'r') {
+                    System.err.println("RESET");
+                    this.resetCurrentImageVOToPersisted();
+                }
             }
             return false;
         }
         return false;
+    }
+    private void resetCurrentImageVOToPersisted() {
+        this.configureFromHittableImage(mImages[1]);
     }
 
 

@@ -2,6 +2,7 @@ package com.putable.videx.core;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -33,6 +34,20 @@ public class HittableImage {
         return mLastLoadGood;
     }
 
+    public Pose makeDefaultPose() {
+        // (0,0) in parent, 0 rotation
+        // scaled so larger dimension is 1000
+        int w = mImage.getWidth();
+        int h = mImage.getHeight();
+        int m = w > h ? w : h;
+        double scale = 1000.0/m;
+        Point2D pa = new Point2D.Double(0,0);
+        Point2D oa = new Point2D.Double(0,0);
+        Point2D s = new Point2D.Double(scale,scale);
+        Pose p = Pose.make(pa, 0, s, oa);
+        System.out.println("MFP "+p);
+        return p;
+    }
     private void initHitmapImage(VOGraphics2D v2d) {
         if (mHitmapImage != null)
             throw new IllegalStateException();

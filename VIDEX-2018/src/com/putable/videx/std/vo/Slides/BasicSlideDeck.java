@@ -75,6 +75,7 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
     }
 
     private boolean checkpointSave() {
+        System.out.println("AT CHECKPOINT SAVE DAMMIT");
         File dir = new File(this.mOIOBaseDir);
         File realbase = dir.getParentFile();
         World w = this.getWorld();
@@ -87,10 +88,15 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
         OIOAbleGlobalMap map = loader.getMap();
         OIOSave os = new OIOSave(realbase.toString());
         VO holdParent = this.getParent();
+        System.out.println("CPSV holdPartent "+holdParent);
+
         this.clearParent();
         try {
+            System.out.println("PRE LOADING "+realbase);
             map.endLoading();
+            System.out.println("PRE SAVING "+os);
             os.save(this, map);
+            System.out.println("POSTSAVING");
         } catch (IOException | OIOException e) {
             e.printStackTrace();
             System.err.println("SlideDeck save failed: " + e);
@@ -187,10 +193,13 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
     }
     @Override
     public boolean handleKeyboardEventHere(KeyboardEventInfo kei) {
+        //System.out.println("HKE"+kei);
         if (kei.isKeyTyped(' ')) return changeSlide(1);
         KeyEvent ke = kei.getKeyEvent();
+        //System.out.println("HKE2 "+kei);
         if (ke.getID() == KeyEvent.KEY_RELEASED) {
             int code = ke.getKeyCode();
+            System.out.println("HKE2 KR "+code+" "+(char)code);
             switch (code) {
             case KeyEvent.VK_RIGHT:
             case KeyEvent.VK_DOWN:
@@ -208,8 +217,11 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
                 break;
             }
         }
+        //System.out.println("HKE4 ID "+ke.getID()+" "+ke);
         
-        if (ke.getID() != KeyEvent.KEY_TYPED) return false;
+        if (ke.getID() != KeyEvent.KEY_RELEASED) return false;
+        //System.out.println("HKE5 "+ke.getKeyChar()+" '"+(int) ke.getKeyChar()+"'");
+
         //if (ke.getKeyChar() == '\022') return reload(); //^R
         if (ke.getKeyChar() == '\023') return checkpointSave(); //^S
         if (ke.getKeyChar() == '\001') { //^A - add another slide

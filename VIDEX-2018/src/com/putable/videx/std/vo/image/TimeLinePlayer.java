@@ -197,11 +197,6 @@ public class TimeLinePlayer extends ImageViewer {
         return super.updateThisVO(stage);
     }
 
-    @Override
-    public ListIterator<Path> pathPosition() {
-        return this.getIteratorIfPossible();
-    }
-
     private void checkMoveStart(boolean fwd,boolean maxspd) {
         if (fwd && !maxspd) {
             this.mUpdatesPerFrame = 0;

@@ -8,9 +8,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.ListIterator;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -37,7 +36,7 @@ public abstract class ReadOnlyDirectoryManager extends EventAwareVO {
     
     private int mGenerationNumber = 0;
 
-    private List<Path> mPaths = new LinkedList<Path>();
+    private ArrayList<Path> mPaths = new ArrayList<Path>();
 
     public String getPersistentDataFor(Path p) {
         if (mPersistenceMap == null) return null;
@@ -52,6 +51,12 @@ public abstract class ReadOnlyDirectoryManager extends EventAwareVO {
             mPersistenceMapNeedsSave = true;
         }
         return true;
+    }
+    
+    public int getPathCount() { return mPaths.size(); }
+    public Path getPath(int index) { 
+        if (index < 0 || index >= getPathCount()) return null;
+        return mPaths.get(index); 
     }
 
     public class RODMIterator implements ListIterator<Path> {
@@ -77,7 +82,9 @@ public abstract class ReadOnlyDirectoryManager extends EventAwareVO {
         public Path next() {
             if (!hasNext())
                 throw new NoSuchElementException();
-            return mIterator.next();
+            Path ret = mIterator.next();
+            System.out.println("NEXTTO "+ret);
+            return ret;
         }
 
         @Override
@@ -90,7 +97,9 @@ public abstract class ReadOnlyDirectoryManager extends EventAwareVO {
         public Path previous() {
             if (!hasPrevious())
                 throw new NoSuchElementException();
-            return mIterator.previous();
+            Path ret = mIterator.previous();
+            System.out.println("PREV TO "+ret);
+            return ret;
         }
 
         @Override

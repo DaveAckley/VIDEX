@@ -323,11 +323,16 @@ public class OIOSave {
             throws IOException, OIOException {
         if (!this.mTopsPending.isEmpty())
             throw new IllegalStateException();
+        System.out.println("SAVE "+theOneAndOnlyTop);
         this.addTop(theOneAndOnlyTop);
         this.saveTops(omap);
+        System.out.println("SAVED TOPS "+omap);
         Path topFile = Paths.get(this.mLastSaveDirectory.toString(), "0");
+        System.out.println("topFile="+topFile);
         IOException e = FileUtils.writeWholeFile(topFile,
                 "#" + FileUtils.toLex(theOneAndOnlyTop.getOnum()) + "\n");
+        System.out.println("WROTE topFile="+topFile+ " got "+e);
+
         if (e != null)
             throw e;
     }
