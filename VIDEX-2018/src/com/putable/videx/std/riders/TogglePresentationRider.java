@@ -60,15 +60,15 @@ public class TogglePresentationRider extends SOSIPoseRider {
         return mStashedPose;
     }
     
-    private void togglePresentation() {
-        System.out.println("TOGGLERP "+mIsPresented);
-        if (mIsPresented) {
-            mIsPresented = false;
+    protected void togglePresentation() {
+        System.out.println("TOGGLERP "+isPresented());
+        if (isPresented()) {
+            setIsPresented(false);
             Pose stash = getStashedPose();
             this.copyTo(stash);
             this.awaken();
         } else {
-            mIsPresented = true;
+            setIsPresented(true);
             Pose pres = getPresentationPose();
             this.copyTo(pres);
             this.awaken();
@@ -126,6 +126,14 @@ public class TogglePresentationRider extends SOSIPoseRider {
             return true;
         }
         return false;
+    }
+
+    public boolean isPresented() {
+        return mIsPresented;
+    }
+
+    public void setIsPresented(boolean mIsPresented) {
+        this.mIsPresented = mIsPresented;
     }
     
 }
