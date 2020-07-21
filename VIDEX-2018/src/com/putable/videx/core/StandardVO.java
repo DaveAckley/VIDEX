@@ -153,7 +153,7 @@ public abstract class StandardVO implements VO {
         }
         return null;
     }
-    /**
+    /**random
      * The AffineTransform from my VOC to my parent's VOC
      */
     private AffineTransform mPoseAT = new AffineTransform();

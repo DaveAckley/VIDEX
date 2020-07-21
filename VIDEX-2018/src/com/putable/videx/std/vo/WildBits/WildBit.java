@@ -1,5 +1,6 @@
 package com.putable.videx.std.vo.WildBits;
 
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
@@ -42,11 +43,21 @@ public class WildBit extends EventAwareVO {
         // Nothing to do.
         return true;
     }
-
+    
     @Override
     public void drawThisVO(VOGraphics2D v2d) {
         Graphics2D g2d = v2d.getGraphics2D();
+        Color oldfg = g2d.getColor();
+        Color oldbg = g2d.getBackground();
         Font oldFont = g2d.getFont();
+
+        if (mValueWritten) {
+            this.setBackground(this.mValue.backgroundColor);
+            this.setForeground(this.mValue.foregroundColor);
+        } else {
+            this.setBackground(this.mValue.backgroundColorNoValueWritten);
+            this.setForeground(this.mValue.foregroundColorNoValueWritten);
+        }
         g2d.clearRect(0, 0, FONT_BOX_WIDTH, FONT_BOX_HEIGHT);
         if (mValueWritten) {
             g2d.setFont(mBitFont);
@@ -58,7 +69,7 @@ public class WildBit extends EventAwareVO {
             g2d.drawString(mValue.code, x, y);
 
         }
-        if (mLabelPosted) {
+        if (mLabelPosted && mLabel != null) {
             AffineTransform at = g2d.getTransform();
             double ninety = 90 * Math.PI / 180;
             g2d.rotate(ninety);
@@ -84,8 +95,6 @@ public class WildBit extends EventAwareVO {
             throw new NullPointerException();
         if (mValue != this.mValue) {
             this.mValue = mValue;
-            this.setBackground(this.mValue.backgroundColor);
-            this.setForeground(this.mValue.foregroundColor);
         }
     }
 

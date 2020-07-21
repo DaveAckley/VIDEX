@@ -3,6 +3,7 @@ package com.putable.videx.std.vo.Slides;
 import com.putable.videx.core.Pose;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.SlideDeck;
+import com.putable.videx.interfaces.VO;
 import com.putable.videx.std.riders.SOSIPoseRider;
 
 public class BasicSlideRider extends SOSIPoseRider implements SlideRider {
@@ -55,6 +56,15 @@ public class BasicSlideRider extends SOSIPoseRider implements SlideRider {
         if (currentNum!=mLastCurrentNum) {
             this.awaken();
             mLastCurrentNum = currentNum;
+            VO vo = this.getVehicle();
+            if (vo instanceof BasicSlide) {
+                BasicSlide bs = (BasicSlide) vo;
+                String notes = bs.getNotesStringIfAny();
+                if (notes == null) notes = "";
+                else {
+                    System.out.println("NOTES NOTES NOTES DO SOMETHING");
+                }
+            }
         }
     }
 

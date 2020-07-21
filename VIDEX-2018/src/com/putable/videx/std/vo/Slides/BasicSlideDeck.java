@@ -141,7 +141,7 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
         setRiders();
         return true;
     }
-
+    
     private void clearSOSIs(BasicSlide bs) {
         for (Rider d : bs.getRiders()) {
             if (d instanceof SOSIPoseRider) d.die();

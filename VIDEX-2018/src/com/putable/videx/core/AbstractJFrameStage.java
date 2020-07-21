@@ -12,6 +12,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.event.MouseInputAdapter;
 
 import com.putable.videx.interfaces.Configuration;
@@ -25,9 +26,13 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
     private final Configuration mConfig;
     private final World mWorld;
     private final Hitmap mHitmap;
+    private final JFrame mPrivateFrame;
     
     public Configuration getConfiguration() { return mConfig; }
 
+    @Override
+    public JFrame getPresenterFrameIfAny() { return mPrivateFrame; }
+    
     @Override
     public World getWorld() { return mWorld; }
 
@@ -55,7 +60,7 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
         this.setCursor( this.getToolkit().createCustomCursor(
                 new BufferedImage( 1, 1, BufferedImage.TYPE_INT_ARGB ),
                 new Point(),
-                null ) );
+                "NoCursor" ) );
         
         mStagePanel = new StagePanel(this.mHitmap, this.getRoot(), this.getWidth(), this.getHeight());
         this.setContentPane(mStagePanel); // Set as content pane for this JFrame
@@ -160,10 +165,19 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
         initGraphicsDevice();
     }
 
+    JFrame initPrivateFrame() {
+        JFrame ret = new JFrame();
+        JLabel label = new JLabel("<HTML><h1>HEWO</h1><p>ZONg <i>bgneid</i> dongngog</p>");
+        ret.add(label);
+        ret.pack();
+        ret.setVisible(true);
+        return ret;
+    }
     public AbstractJFrameStage(World world, Configuration config) {
         this.mWorld= world;
         this.mConfig = config;
         this.mHitmap = new Hitmap(mWorld.getRandom());
+        this.mPrivateFrame = initPrivateFrame();
     }
 
 

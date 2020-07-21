@@ -2,6 +2,8 @@ package com.putable.videx.interfaces;
 
 import java.awt.geom.Point2D;
 
+import javax.swing.JFrame;
+
 import com.putable.videx.core.Hitmap;
 import com.putable.videx.core.SXRandom;
 import com.putable.videx.std.vo.StageVO;
@@ -68,6 +70,8 @@ public interface Stage {
      * @return
      */
     Hitmap getHitmap();
+    
+    JFrame getPresenterFrameIfAny() ;
     
     /**
      * Access the SXRandom object for this stage

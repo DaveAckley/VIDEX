@@ -51,6 +51,11 @@ public class BasicSlide extends EventAwareVO implements Slide {
     @OIO(inline = false, extension = ".html")
     private String mTextString = null;
 
+    @OIO(inline = false, extension = ".notes")
+    private String mNotesString = null;
+    
+    public String getNotesStringIfAny() { return mNotesString; }
+    
     @OIO
     private double mHTMLWidthFraction = 0.60;
     private String mLoadedText = null;
@@ -82,7 +87,8 @@ public class BasicSlide extends EventAwareVO implements Slide {
 
     @Override
     public String toString() {
-        String snip = getText().replace('\n', '.').substring(0, 40);
+        String stuf = getText().replace('\n', '.');
+        String snip = stuf.length() > 40 ? stuf.substring(0, 40) : stuf;
         return super.toString() + "["+snip+"]";
     }
     public void setSlideName(String name) {

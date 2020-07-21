@@ -100,6 +100,14 @@ public abstract class StandardWorld implements World, ActionListener {
         //mTimer.setCoalesce(false);
         mTimer.start();
         System.out.println("TIMER STARTED");
+        while (mThreadRunning) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
 }
