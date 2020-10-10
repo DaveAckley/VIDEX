@@ -1,0 +1,609 @@
+{49}  -*- text -*-
+[0:
+
+Fri Sep 14 16:27:33 2018 In Placitas.  Well, for some reason it
+appears the notes file didn't update in the push from nubig and the
+pull from nhs :(.  So, starting this new file rather than continuing
+in 201808130642-notes.txt.
+
+[1:
+
+Fri Sep 14 16:34:48 2018 Now we need to (re)organize the top levels of
+all this crap, since the loading infra is starting to become
+plausible.  We need to get settled on:
+
+ - Where the onum->VO map is held
+
+ - Where the Compiler itself is held
+
+ - How the instantiated + configured VOs get into the mRoot
+
+ - And what in fact mRoot actually points to.  Is it a SlideDeck, or
+   something more generic?
+   [2:
+
+Fri Sep 14 17:37:34 2018 Well, we have all this barely-used generality
+at the Configuration level and such.  We should perhaps make a
+com.putable.videx.std.configurations.SlideDeckConfiguration and a
+SlideDeckStage and so on.[3:
+
+Sat Sep 15 00:39:29 2018 After evening and nap.  Tree for
+StandardSlideDeckStage:
+
+   StageVO (mRoot)
+     |
+     |--StandardSlideDeck
+     |       |
+     v       |--StandardSlide (1st? Disable later?)
+     ?       |
+             |--StandardSlide (2nd?)
+             .
+             .
+             |--StandardSlide (Last?)
+
+
+Boot sequence
+
+ CompilerDriver.main(args) ->
+ CompilerDriver(args) takes
+    args[0]:SlideDeckDirectory,
+    args[1]? Name of configuration class (default StandardSlideDeckConfiguration)
+   builds mConfiguration from given class, then ->
+   builds mWorld (default StandardSlideDeckWorld), which ->
+     builds a single Stage (default StandardSlideDeckStage), and
+     calls initStage on it ->
+       AbstractJFrameStage.initStage ->
+         (default) StandardSlideDeckStage.initVOs[4: Sat Sep 15
+          02:47:19 2018 And it seems like this would be a fine place
+          to compile the VOs, no?  We'd need to get the dir down to
+          it.  Is it already there?  :4]
+   Then for each Stage in mWorld, builds a compiler and compiles and
+    loads the (same) SlideDeckDirectory in that stage   
+   Then -> mWorld.runWorld()
+
+:3]
+
+:2]
+
+:1]
+
+:0]
+[5:
+
+Sat Sep 15 03:01:51 2018 OK so we made AbstractConfiguration and it
+captures the command line args..  Now the slide deck guys should use
+it.. [6:
+
+Sat Sep 15 15:49:31 2018 OK, back from sleep and dinner into the
+oven.  Current designo is: Since we generalized from serializing VOs
+to serializing OIOs -- so that, initially, Poses can be stored naturally
+as separate objects -- that means .oio files may contain top-level
+non-VO content.  So how are we supposed to know which OIOs in a file
+are supposed to become children of the associated slide, vs which are
+just along for the ride?
+
+Before we went to bed, we figured that we actually need to turn the
+whole OIO<->HTML relationship inside out, and make the .oio file
+primary, and any .html file secondary.  Then the first OIO in a .oio
+file is taken as 'the' object, and any others are just subsidiary
+structure in support of 'the' object.
+
+So that's a non-trivial inversion given the twisty complexity and
+current fragility of my SlideDeck- and BasicSlide-level processing.
+Can we try to sequence a little TODO here for it:
+
+ - Review the parsing sequence.  I think the actual oio parsing guts
+   can stand, but somebody should check that the first object in the
+   oio file really is some kind of Slide.
+
+ - Right now we're synthesizing both ASTSlideDeck (in
+   OIOCompiler.configureOIOs) and ASTSlides (in
+   ASTSlideDeck.getSlide).  We're saying we're going to ditch
+   ASTSlide, and instead have the slide be just a 'normal' ASTObj.
+
+   [9: So, no
+X DON'T DO THIS  :9] - Extend the ASTValue parser with some syntax meaning 'a String with
+   content loaded from the following path' -- somehow -- and use it to
+   make the HTML file specify the content of the.. ugh.  Maybe we
+   should go ahead and special case that?[7: Sat Sep 15 16:18:19 2018 
+
+ - I guess that means we need a Slide interface to check the first oio
+   class against. [8: Sat Sep 15 16:25:57 2018 OK, we have that,
+   providing a way to set/get theHTML text.  So we'll go for
+   special-casing loadHTML results somehow.  :8]
+
+:7]
+
+:6]
+
+:5]
+[10:
+
+Sat Sep 15 16:40:16 2018 OK, StandardSlideDeckStage.loadSlideDeck is
+one place to act.  It builds the compiler for the slide deck directory
+and lights it off.
+
+And we have OIOCompiler.reload -> loadDirFiles -> loadFile, which
+
+ -> loadCSS, loadHTMLSlide, and loadOIOFile.
+
+The CSS needs to go to the slide deck level, while the oio and html
+with common base names need to be bound together at some point.
+
+Right now, loadHTMLSlide is going to ASTSlideDeck.getSlide, which is
+blithely instantiating a BasicSlide on demand.  So we need to change
+that to like a Map<String,String> basename->html and keep it at
+OIOCompiler level for now, to resolve later with Slide.theHTML.[11:
+
+Sat Sep 15 16:50:07 2018 OK, now in loadHTMLSlide we're building
+OIOCompiler.mSlideNameToHTMLMap. 
+
+:11]
+
+:10]
+[12: 
+
+Sat Sep 15 17:14:45 2018 OK, so Parser.parse is still returning as
+ASTTree of all the ASTObj it found in the file.  We need to go through
+that and build the compiler's onum->obj map early now, I think.
+[13:
+
+Sat Sep 15 17:17:45 2018 Hmm but that means I need to instantiate the
+OIOAbles very early?  But that's okay because that much is just a
+nullary ctor?[14:
+
+Sat Sep 15 17:20:02 2018 OK currently OIOCompiler.checkTypes is doing
+the top-level ASTTree instantiation.  I think we want to lift that
+code to a one-ASTObj instantiation method, and call it earlier, as
+soon we we have the ASTTree from the parsing.  But have to check on
+dinner here..
+
+:14]
+
+:13]
+
+:12]
+[15:
+
+Mon Sep 17 02:28:21 2018 OK, so we've got an annotation-based
+serialization spike that isn't bad, but we're going to need
+simplifying and clarifying of the current real OIOAble mess to
+understand how exactly to integrate this stuff.
+
+But I'm going to try to go back to sleep now and pick up in something
+closer to the morning.
+[16:
+
+Mon Sep 17 06:13:54 2018 OK, so, let's try to run it down quickly:
+
+Serialization sequence:
+
+ - Given an existing SlideDeck sdvo, do this:
+     String basedir = sdvo.getDeckDir();
+     Path savedir = FileUtils.createUniqueTimestampSubdir(basedir);
+     OIOPersist oio = new OIOPersist(savedir);
+     oio.saveAll(sdvo);
+
+- and then you're done.
+
+[17:
+
+Mon Sep 17 06:46:21 2018
+
+Deserialization sequence
+
+ - Given an existing basedir, do this:
+   Path loaddir = FileUtils.findMaxSubdirNameUnder(Paths.get(basedir));
+   OIOLoad oio = new OIOLoad(loaddir);
+   VO tree = oio.loadAll();
+   replaceRoot(tree);
+
+ - and then you're done.
+
+Yah right.
+
+We want an easy way to privilege one 'presentation' subdir.  Maybe we
+should move the directory finding into the loader:
+
+   OIOLoad oio = new OIOLoad(basedir,true); // (Path,prefer THE_TALK/ subdir if present)
+   VO tree = oio.loadAll();
+   replaceRoot(tree);
+
+but then reloading on modification time change isn't easy..  unsure.
+
+and I guess give most of the analogous automation to saving:
+
+     String basedir = sdvo.getDeckDir();
+     OIOPersist oio = new OIOPersist(basedir);  // (But no option to overwrite THE_TALK!)
+     Path writtenDir = oio.saveAll(sdvo);       // writtendir in call you care?
+
+[18:
+
+Mon Sep 17 07:23:29 2018 And all that goes where?  The saving could be
+in the slidedeck itself:
+
+  void checkpoint() {
+     OIOPersist oio = new OIOPersist(this.getDeckDir()); 
+     this.mLastSaveDir = oio.saveAll(this);
+  }
+
+called on ^S perhaps.
+
+[19:
+
+Mon Sep 17 07:44:25 2018 OK, let's start a new parallel OIO framework
+based on all this, and try to move our flag to it TODAY.[20:
+
+Mon Sep 17 10:30:26 2018 OK, we have OIOSave and some little test code
+that seems plausible enough.  How do we take another step?[21:
+
+Mon Sep 17 11:01:34 2018 Moved some packages around to make oio.load
+and oio.save, now trying to deal with what loading would look like.
+We need to extend the saving spike to do loading too, I guess, then go
+from there.[22:
+
+Mon Sep 17 11:23:04 2018 OK, we're redoing OIOSave to take just a
+single OIOEnabled as the top of the tree to be saved, and that's what
+we'll go for on loading..  But how do we identify that one top guy, in
+a directory full of files?  Name his file -ROOT-.oio or something?
+Make another file 'ROOT' that contains the name of the root guy?  If
+we do that we could go back to handling an Iterable<OIOEnabled> at the
+top if we wanted to.
+
+But really I think the whole idea of having multiple tops is bad.
+It's better just to require the client to pull everything together
+however they want to.  And we just break it out to different
+files.. how?  Oops.  That was what the multiple tops were for.  So
+that we could have a separate .oio file for each of them.  And that
+means we don't need a 'ROOT' or such to gather them up, because the
+first OIOEnabled in each .oio file is, by definition, a 'top'.
+
+OK.  Doh.  Reunbackshiftgearing..
+
+:22]
+
+:21]
+
+:20]
+
+:19]
+
+:18]
+:17]
+
+
+:16]
+:15]
+[23:
+
+Mon Sep 17 13:10:27 2018 OK, we're beginning to parse our new
+serialization output with our old parsing code, and that means we're
+going to have to bite the bullet about merging the OIOAble and
+OIOEnabled interfaces.[24:
+
+Mon Sep 17 14:12:05 2018 OK, so I manually ditched OIOEnabled and
+converted to OIOAble, after getting rid of the OIOAble methods that
+didn't have correlates in OIOEnabled.  And now we've gotten as far as:
+
+  /home/ackley/SPIKES/20180917132431/11.oio:1:#11:First OIO not Slide
+
+which is pretty darn far.  Going to stop for a bit but next steps are
+doing a reflection-based OIOAble configurer based on an ASTObj.[25:
+
+Tue Sep 18 05:40:25 2018 OK, well, the overnight's kind of messed up
+sleep schedule-wise with a 9am appointment coming up, but we have
+OIOLoad configuring a smattering of data member types.  Main sticking
+point was trying to deal with primitive arrays in any reasonably
+general fashion; also dealing with things like List<Integer> was more
+disgusting than expected, since the 'Integer' gets lost when the thing
+is considered _as_a_Class_, though it's still accessible when
+considered _as_a_Type_.
+
+At this point we're just stringifying the (effective) type and going
+into our hardcoded lambda-Map with that -- with int[] separate from
+float[] separate from boolean[] and so on.
+
+We need to centralize the Formatter and the Unpacker lambdas to ease
+keeping the two directions in sync.
+
+:25]
+
+:24]
+
+:23]
+[26:
+
+Tue Sep 18 16:05:25 2018 OK, time to move the flag again.  For the
+record, here's what our save file format is getting to look like at
+this point:
+
+#210:com.putable.videx.std.vo.Slides.BasicSlide {
+
+    // BasicSlide
+    mSlideName: "curly"
+    mOrigin: [5.0 5.0]
+    mFontSize: 18
+
+    // EventAwareVO
+    mMouseAwarenessEnabled: true
+    mIsMouseTarget: false
+    mIsDraggable: true
+    mDragStartVOC: [0.0 0.0]
+    mFocusAwarenessEnabled: false
+}
+
+:26][27:
+
+Wed Sep 19 02:41:53 2018 OK, we're back in ABQ.  Previous notes did
+make the push, re :0: above, but on the laptop we were in the wrong
+eclipse-repo-copy and didn't see it, doh.  Make it all an 'integrated
+workspace' doesn't magically solve the organizational problem writ
+large.
+
+:27]
+[28:
+
+Wed Sep 19 03:07:15 2018 OK, so OIOSave and OIOLoad are starting to
+look reasonable.  How are we going to unite the value savers and
+loaders, before we flesh out too many types?
+
+Make class OIOValue that unites a value saver and a loader; make class
+OIOValues that holds the map from type name to OIOValue; make OIOLoad
+and OIOSave each take a reference to an OIOValues.  They could share
+one to save memory or make their own for simplicity, since OIOValues
+will be (at least essentially) const anyway..
+
+:28]
+[29:
+
+Wed Sep 19 09:59:00 2018 OK, the code's a pretty big mess but we have
+OIOValues and the formatter and the unpacker are right next to each
+other in the code.  Let's do a quick round of renaming.
+Formatter/unpacker ->  externalizer/internalizer?
+
+:29]
+[30:
+
+Fri Sep 21 03:27:06 2018 OK, so we've made significant progress:
+
+ - A new @OIOTop annotation on a class means that when an instance of
+   this class is saved, it should be saved in its own file
+   regardless of who owns it.  Right now BasicSlide is the only class
+   with that annotation.
+
+ - A special file named "0" is written and it contains the #onum of
+   the one and only 'top' object in the directory.  That object 
+   becomes (by definition) the root of the loaded tree.
+
+ - A new OIOLoadDriver takes a base directory as an argument, loads
+   the max subdir under it, and sticks the resulting top in as the
+   only child of a StageVO, and there we go.
+
+What we need:
+
+ - There's still design confusion between the new OIOLoad processing
+   sequence and the old OIOCompiler.reload sequence:
+
+   = Right now OILoad.loadOIO(File) builds a new OIOCompiler for each
+     .oio file.  Almost surely OIOLoad should build just one for the
+     whole directory, although that's not entirely certain since the
+     OIO map was moved ahead of OIOCompiler construction.  Not clear.
+
+   = And more obviously, we're not fusing the out-of-line files into
+     the OIOAbles during configuration.  All the out-of-lines are read
+     by OIOLoad.considerFile prior to any compilations, so the
+     in-lining could happen during oio compilation, if the
+     configuration process had access to the out-of-lines.
+
+So that's our status starting up this Friday morning.  But first DDR.
+[31:
+
+Fri Sep 21 04:15:05 2018 OK, so let's try to persist the OIOCompiler,
+then go for inlining the out-of-lines.[32:
+
+Fri Sep 21 04:18:55 2018 Hmm, seems like OIOLoad.configureOIOAble does
+the inlining, and it's hard for me to believe we're not currently
+going through there, so why are we not inlining?  Oh well, have to
+watch it. 
+[33:
+
+Fri Sep 21 04:49:29 2018 Well fogging finally.  So we have loaded
+slides displaying loaded html content, with wiggly squares and
+what-not within a slide.  It's time to put some commands on SlideDeck,
+like:
+
+ - next/prev slide, and
+ - checkpoint save current state
+
+and more Great Stuff like THAT!
+
+But first, let's close eclipse and checkpoint this mofog itself.
+
+Getting there.
+[34:
+
+Fri Sep 21 05:00:57 2018 OK.  Let's make sure css is working at the
+slide deck level..
+
+:34]
+ 
+:33]
+
+:32]
+
+:31]
+:30]
+[35:
+
+Fri Sep 21 07:56:13 2018 We have auto-reload working!  It's cool!
+
+What we're wondering, though, is about having Pose be a standalone
+OIOAble.  It's kind of a pain to keep searching back and forth in the
+.oio file to get from a thing to its Pose.  And given that Poses are
+not supposed to be shared...  ...although... hmm, that has to be a
+terrible terrible idea.. but thinking about configuring a whole pile
+of objects at once by having them share a pose...
+
+DON'T GO THERE DAVE DON'T OPEN THAT DOOR COME BACK DAVE COME BACK
+[36:
+
+Fri Sep 21 08:01:49 2018 Well, so the idea was what about just doing a
+custom OIOValueProcessor for Pose, and do it like we're doing Color,
+and have Pose no longer be an OIOAble?[37:
+
+Fri Sep 21 10:22:37 2018 After errands and breakfast.  Let's do it.
+Pose not to be
+OIOAble.[38:
+
+Fri Sep 21 10:34:17 2018 Well that seemed to go in pretty smoothly.
+
+Now we want a ^S save command, or at least some kind of mouse click or
+something, since we haven't really worked up the keyboard events side
+of things much yet.[39:
+
+Fri Sep 21 10:45:05 2018 OK so how the fog is keyboard stuff supposed
+to work?  Review.
+
+VO.handleKeyboardEvent(KeyboardEventInfo)
+EventAwareVO:
+
+    @Override
+    public boolean handleKeyboardEvent(KeyboardEventInfo kei) {
+        if (isFocusAware())
+            throw new UnsupportedOperationException("XXX");
+        return false;
+    }
+
+So that appears to be as far as we got.  So be it.  Let's see if we
+can get that to blow.[40:
+
+Fri Sep 21 11:33:55 2018 OK so we need a fair bit of infrastructure
+here.  Since we don't have a mouse hit point during a keyboard event,
+we can't start bottom-up so it seems we need to dispatch keyboard
+events top down.  So we need a recursion for that..  If we're claiming
+we're going to maintain some notion of singular keyboard focus I guess
+it doesn't matter if we go preorder or postorder.. but I guess I think
+postorder.. let the kids have a crack at it first, they're onscreen
+and all..
+
+:40]
+
+:39]
+
+:38]
+
+
+:37]
+
+:36]
+:35]
+[41:
+
+Sat Sep 22 07:00:19 2018 OK, so SlideDeck ^S is working and it seems
+pretty cool.  One unexpected but actually good thing is that the ^S
+changes the modification time on the basedir, which leads to an
+instant reload!  So in effect ^S means 'checkpoint current state and
+then reload from that state' -- the save file is immediately tested by
+reloading it.
+
+Anyway, we need more functionality!
+
+TODO:
+
+[43: Mon Sep 24 05:20:50 2018 Yesterday or before:
+DONE :43] - Slide forward and back on arrows, space, etc
+[44: DONE  :44] - Automatic slide resizing for screen on select
+[45: DONE (SOSIPoseDriver)  :45] - Perhaps some automated pose interpolation on EventAwareVO or the
+   like?  Set a destination pose and let it SOSI to it?  Perhaps
+   that's not really right for infrastructure.  How about a PoseDriver
+   and get some of that going?
+ - ^R to reload without a checkpoint[42: Sat Sep 22 08:06:04 2018
+    Skipping ^R for now.  Just mod the dir in emacs..  :42]
+
+:41]
+[46:
+
+Mon Sep 24 05:26:24 2018 So, we're struggling to get to a pleasing
+arrangement between slide deck and slide.  We wanted a 'themeable'
+style, so ideally the slide deck and the slide would both be (more or
+less) completely generic, and just by changing the riders that get
+put on the slide, different show/hide behaviors would be realized.
+
+The notion was this could all be data.  You could take an existing
+slide deck on disk, edit it somehow to change the rider, and then the
+presentation of that deck could change completely.  No Java code edit.
+
+So that would mean we'd have to have a rider class name or instance or
+something, stored on the slide deck, that would be instantiated or
+cloned onto the slides.  We could (eventually) go to a local override
+style where an individual slide could have a one-off rider of some
+sort, and the slide deck level rider would just be the default
+transition.
+
+[47:
+
+Mon Sep 24 05:38:47 2018 Part of the challenge with the Howl demo,
+though, is that we want multiple slides to be approaching and
+receding, so it's not a binary hidden/shown distinction.  We already
+have Slide.hide and .show taking (SlideDeck, int slideNum, int
+slideCount), and we are calling hide/show on everybody in the deck
+every time a slide change occurs -- right? -- so in principle
+intermediate destinations could be selected..
+
+Alright, then, so what would the Howl Demo destinations be?  We're
+imagining zooming in and rising until they are 'shown', then zooming
+out and continuing to rise as they are hidden.  So it's really a
+vertical list of slides with a lens that slowly moves down the text.
+
+Suppose each slide's 'home' Y position is at 2000*(num/count)+50 or
+whatever.  With some small scale, S=.1 or whatver.  Then based on how
+far they are from the.. wait, we're not telling all slides who's
+currently being shown, just whether _they're_ being shown, and _their_
+own number, and the count.  We want to pass three numbers?  That seems
+a lot.  With three numbers could have just a single method instead of
+hide and show.
+
+Suppose we only have basically three pages visible, prev + cur + next,
+and everything else goes to the home position.  The cur slide is
+nailed to the some fixed position near screen center so the eye
+doesn't have to jump around.
+
+Fuck let's just try positioning three by hand and see what we like.
+[48:
+
+Mon Sep 24 06:23:06 2018 Something like:
+
+    mPose: [130.000000 50.000000 0.000000 0.141581 0.141581 163.978394 
+    mPose: [522.000000 410.000000 0.000000 4.276314 4.276314 110.375298
+    mPose: [772.000000 945.000000 0.000000 8.324450 8.324450 76.928101 
+    mPose: [673.000061 1621.000000 0.000000 4.530597 4.530597 136.38353
+    mPose: [170.000000 2000.000000 0.000000 0.300000 0.300000 0.000000 0.000000]
+    mPose: [200.000000 2000.000000 0.000000 0.300000 0.300000 0.000000 0.000000]
+
+OK.  Suppose we change the interface to
+
+Slide.deckStatus(SlideDeck sd, int currentnum, int yournum, int totalslides)
+
+and Slide is configurable how?   A Rider to clone?  A Rider class
+name?
+
+Problem with persistent Riders is that we have them set up to die as
+soon as they accomplish their task.  Of course, dying doesn't actually
+free them if there are other references..  But we're currently calling
+StandardVO.mRiders the @OIO owner of any active Riders; if we had a
+second reference to it that couldn't be the owner.
+
+Three possibilities:
+
+1 - Persist and repost an instance of a Rider
+2 - Own a private Rider and clone it for use
+3 - Keep a class reference of a Rider and instantiate it for use.
+(4 - Keep a String class name of a Rider and...)
+
+
+
+
+:48]
+:47]
+
+:46]

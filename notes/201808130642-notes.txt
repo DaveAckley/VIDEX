@@ -1,0 +1,2029 @@
+{113}  -*- text -*-
+[0:
+
+Mon Aug 13 06:43:03 2018 OK, so we're back to Java and we're in to
+design.  How many separate parts do we want to go for at the top?
+
+ - A StandardDriver that takes
+   = Configuration, and then builds a
+   = World
+
+ - A World containing all instantiated content, including
+   = zero or more 'Stages' each with one Display to draw one
+   = one WorldManager, that handles add, removing, enabling and
+     disabling Stages, and routing top-level programmatic events down
+     to the Stages ('real' IO events are handled lower?)
+
+ - A Stage containing all material for interacting with one Display
+   = Defines an origin and a scale for that display
+   = Contains the root of the object tree for that display
+
+ - A Configuration per video/lecture/talk, pulls together
+   = 'Slides' (single linear sequence to advance through)
+   = 'Scenes' (initialized collections of interactive objects)
+   = 'Options' (WTFK)
+
+ - Locatable: Som
+
+
+
+
+
+:0]
+[1:
+
+Mon Aug 13 15:47:38 2018 OK, we have a beginning of a framework
+running, but we already have to rethink it, because it currently isn't
+applying the transform to the kids.  It is pretty clean though; would
+like to not lose that..
+
+[2:
+
+Mon Aug 13 16:36:52 2018 OK, so how are we going to fix this.  We need
+to tear the update-and-event-and-drawing sequences into slightly
+smaller pieces..
+
+Drawing:
+
+ on the way down:
+
+   - get pose
+   - save g2d transform
+   - apply pose transform to g2d
+   - draw self
+   - iterate over drawing children
+   - restore g2d transform
+   - done
+
+drawVO(g2d)
+
+
+:2]
+:1]
+[3:
+
+Tue Aug 14 03:12:50 2018 So how are we going to do the mouse hit -> VO
+mapping in this brave new world?  We don't even have a bounding box,
+at present.  We'd like to have like a shadow bitmap that we render to,
+but instead of rendering colors we render VO numbers, and then just
+take that number from the hit pixel..  But that's expensive to do
+every render.  Could we do it only when we have an event pending?
+
+The grunt way is to force each VO to implement a containsPoint method
+which is partially redundant with the drawing code.
+
+What if we require VOs to have a bounding box that applies to
+themselves and their children, so we could reject irrelevant VOs as we
+process hits from the top.
+
+It would be slick to do exact mouse hits pixel by pixel.  You could
+grab a number by its decimal point or whatever.
+
+So what would we need for this:
+
+1 - A VO id number, expressed as a color
+2 - An id->VO ptr hash map
+3 - A way to have VO.getForeground() and VO.getBackground() both
+    return the idcolor, when we're rendering for the hitmap
+4 - An on-demand hitmap renderer, with a bool that's cleared when we
+    redraw the screen and set when we compute the hitmap.  So we'll
+    compute the hitmap at most once per simulation cycle.
+5 - A per-stage background image to render to, that resizes with
+    window resizing
+6 - We actually don't need to have VOs remember their 'idcolor'.  We
+    just clear the hashmap when we start hitmap rendering and assign
+    idcolors on the fly as we add VOs to the map.
+7 - Fuck let's do this.
+
+[4:
+
+Tue Aug 14 03:50:16 2018 So can we put the hitmap in StagePanel?
+
+Now, clearing is a problem.  Or at least, clearing a rectangle is
+still going to cause all the cleared pixels to hit on the VO that
+cleared them.  If you don't want to take ownership of them, then don't
+draw them at all..  So Square clears, and takes ownership of its
+volume.  LabelledPoint just draws text in the air and only takes those
+pixels.
+
+So maybe that's just a feature of clearing..
+
+[5:
+
+Tue Aug 14 04:26:41 2018 OK, so how do we get VO colors to change to
+temporary id numbers when we're hitmapping?  The goal is to use the
+drawing routines unchanged.
+
+In the background all along here I'm wondering if we're going to need
+parent pointers for VOs given that the hitmap is going to take us
+directly to a single VO with no recursion..  But we'll jump off that
+bridge when we get to it.  Maybe we just know what VO got the hit, and
+it does whatever it wants in its local frame, and the consequences
+become visible on the next render.
+
+We will need to map from screen coords to arbitrary VO coords,
+though.  Do we also want to cache full ATs on VOs as we draw?  So we
+can go from screen to local coord in one step?
+
+We do want to do that, because we'll need to know exactly where inside
+a VO we hit, in VO coords.
+
+So we want an AT that at the StagePanel level is the identity map --
+mapping pixel coords to VO coords, but [6:
+
+Tue Aug 14 09:19:40 2018 OK, so let's get specific about what we want.
+
+ - Given the screen coordinate of a pixel, find the VO who last drew
+   to that pixel, and find the coordinates in that VO frame
+   corresponding to the given screen coordinate.
+
+   = That's called..  VO StagePanel.mapPixelToVO(Point2D in, Point2D out)
+
+     Throws IAE if in is null.
+     Returns null if 'in' is not on stage or no VO drew to that point.
+     Otherwise returns the VO that last drew to pixel 'in', and if
+     'out' is non-null, sets it to the coordinates in VO-space
+     corresponding to 'in' in stage space
+
+[7:
+
+Tue Aug 14 09:35:23 2018 And wow if we could go the other way, from
+coord in a VO to stage pixel coord, and then look up what's in that
+stage pixel coord, we could do things like have VO points wander
+around randomly but stay on top of their parent's pixels even if their
+parent is an arbitrary hand-drawn set of brush strokes or whatever (so
+long as their parent knows how to draw itself).
+
+So that would mean (1) we need 'VO.VO mParent', which we surely saw
+coming, and (2) we need
+
+  Point2D VO.mapCoordToPixel(Point2D in, Point2D out)
+
+to do something like the inverse of StagePanel.mapPixelToVO.
+
+Can we normalize the jargon here a little?  StagePanel->Stage?[8: No,
+Stage is the interface.  StagePanel -> StageCanvas?  :8]
+Coord->VOC?
+
+:7]     [9:
+
+Tue Aug 14 11:31:26 2018 OK, so what is the simulation cycle flow
+going to look like?
+
+(1) Stages are completely independent.  We can have more than one, but
+    their updating and rendering will be (at least logically)
+    completely separate from each other.  So here we consider only a
+    single Stage.
+
+(2) StandardWorld owns all the Stages.  On each simulation cycle,
+    first all Stages are updated in turn, then all Stages are painted
+    in turn.  Note all that happens during a single atomic callback on
+    the EDT.
+
+(3) In between simulation cycles, IO events like keyboard and mouse
+    hits may be processed on the EDT.  At that point, nothing is
+    changing during the simulation.  But if an event -- like a mouse
+    drag -- changes the position of something before the next
+    simulation cycle, information cached from the last simulation
+    cycle can become invalid.  We probably say we just don't care
+    about that, because we don't expect many such events to occur
+    without an intervening simulation cycle?
+
+(4) So suppose we fragment the Stage processing further.  On each
+    simulation cycle, per Stage, we do:
+
+    - updateStage: Call updateThisVO on each accessible VO.  If any
+      VOs kill themselves (or each other), set a needCleanup flag on
+      the Stage.
+
+    - cleanupStage: If needCleanup, do the safe iteration through the
+      whole tree, deleting any killed VOs.
+
+[10:
+
+Tue Aug 14 12:01:08 2018 Why can't we do the cleanup during
+updateStage?  We mark VOs dead during one updateStage, then when we
+iterate to them, before dispatching, we delete them in the next
+updateStage.  If deleting only happens when we get to the actual
+killed one, it has to be safe?  We're not going to allow multiple
+iterations over the VO kids to be active at once, right?[11:
+
+Tue Aug 14 12:04:54 2018 Note we have to have pending additions as
+well, right?  So we can create new guys and call addVO, say, on our
+parent, but actually that will just store them on a pending list until
+the beginning of the next kid iteration for that parent..
+[12:
+
+Tue Aug 14 14:33:16 2018 OK we did the killing and pending adds that
+way.  Now we need to face doing the VOC->pixel transforms, for
+drawing, and the pixel->VOC transforms for mouse hits.  We are going
+to recursively compose the VOC->pixel hits as we draw..  But we're
+going to draw twice.  Do we do the transforms twice?  Maybe we should
+do a separate transform pass ahead of the drawing, and then the
+drawing just uses the already computed transforms?
+
+:12]
+:11]
+
+:10]
+
+
+:9]
+
+:6]
+
+:5]
+
+:4]
+
+:3]
+[13:
+
+Tue Aug 14 18:25:54 2018 OK, so about to break for dinner preps, but
+current status:
+
+ - We are exploring using a custom Graphics2D so that the VO drawing
+   routines could actually be like paintComponent(Graphics2D) and we
+   could get them to work.  Not sure we want to do that, since we are
+   setting up bg + fg + at in surrounding code, but if this does work
+   we can ditch VOGraphics2D and DualGraphics2D in favor of
+   HitmapGraphics2D extends Graphics2D and go with that.
+
+ - Next steps, perhaps:[14:
+
+Tue Aug 14 23:15:52 2018 OK so the (current) problem with
+HitmapGraphics2D extends Graphics2D is that there's one additional
+step that has to happen when we're drawing via the HitmapGraphics2D:
+We have to set the draw colors based on the current VO.  But of course
+the Graphics2D interface provides no such mechanism.
+
+So that pushes us back towards something like DualGraphics2D extends
+VOGraphics2D, where we ask the VO to paint itself, and we give it
+something that has like setColorsForVO(VO) as well as a getG2D() for
+the actual painting.
+
+Something like:
+
+ StagePanel
+   private DualGraphics2D mD2D
+
+   void paintComponent(Graphics g) {
+      super.paintComponent(g);               // Clear above us
+      mD2D.startRender((Graphics2D) g);      // Init hitmap
+      mRoot.drawVO(mD2D);
+      mD2D.finishRender((Graphics2D) g);     // Mark hitmap valid
+   }
+
+
+ StandardVO
+   void drawVO(VOGraphics2D v2d) {
+     if !isEnabled or !isAlive return
+     v2d.renderVO(this);
+     for (VO vo : mVO) vo.drawVO(d2d);
+   }
+
+   abstract void drawThisVO(Graphics2D g2d);
+
+ DualGraphics2D implements VOGraphics2D
+   private Graphics2D mScreenG2D;
+   private Hitmap mHitmap;
+   void startRender(Graphics2D g2d) {
+     mScreenG2D = g2d;
+     mHitmap.reset(g2d);
+   }
+   void renderVO(VO vo) {
+     renderVOTo(vo,mScreenG2D);
+     mHitmap.initForVO(vo);
+     renderVOTo(vo,mHitmap.getGraphics2D());
+   }
+   void renderVOTo(VO vo, Graphics2D g2d) {
+     Color fg = g2d.getColor();
+     ..save other shit..
+     vo.drawThisVO(g2d);
+     g2d.setColor(fg);
+     ..restore other shit..
+   }
+
+
+[15: Wed Aug 15 00:58:50 2018 ..or whatever.  But sleep now.  :15]
+
+
+:14]
+
+:13]
+[16:
+
+Wed Aug 15 09:13:16 2018 OK well we've hacked together a bunch of
+stuff related to painting and the hitmap, and we need to review the
+larger simulation flow again.
+
+Once more from the top.
+
+StandardDriver
+  public static void main(args)
+    Takes name of configuration class
+    instantiates it by reflection
+    uses it to build a World
+    calls world.runWorld()
+
+interface World provides
+  addStage(Stage) / removeStage(Stage) / runWorld() / destroyWorld() / getRandom()
+
+We're using
+  ConfigTest10 (implements Configuration), which makes a
+  Test10World (extends StandardWorld), which builds and inits a
+  Test10StandardStage
+
+StandardWorld implements World and ActionListener
+  runWorld() starts an EDT timer on to call actionPerformed on itself
+  actionPerformed(..) does
+    for (Stage s : this) s.updateStage(this);
+    for (Stage s : this) s.transformStage(this);
+    for (Stage s : this) s.paintStage(this);
+
+[17:
+
+Wed Aug 15 16:50:41 2018 And that all helps.  The following rules
+apply:
+
+ - VO moving/changing/enabling/killing/adding can happen only during updateStage
+ - StandardVO is read-only during transformStage except for mPoseAT and mVOCToPixelAT
+ - All aspects of VO are read-only during paintStage
+ - paintStage uses mVOCToPixelAt as the sole complete transform for drawing
+
+[18:
+
+Wed Aug 15 16:59:27 2018 So, let's drill into transformStage:
+
+AbstractJFrameStage implements Stage
+  StagePanel mStagePanel
+  - AbstractJFrameStage is currently getting the KeyEvents.  But it's
+    not using them.  (And it's not currently getting MouseEvents but
+    should if it's going to be the one getting KeyEvents..)
+
+  .transformStage is current NYI.  But it should dish to mStagePanel?
+  [19: Wed Aug 15 17:08:19 2018 OK now it calls
+  mRoot.computeTransformVO.  And what does that do?  :19]
+
+ StandardVO
+  computeTransformVO(World w) checks life and enable,
+  calls computeThisTransformVO(w), which recurses on the kids.
+
+  computeThisTransformVO(World w) currently does nothing.  But it
+  should do the work of computing mPoseAT based on mPose, and ..
+
+[20:
+
+Wed Aug 15 17:24:04 2018 Stepping through drawing to see what's
+what..  Hitmap.initGraphicsForVO needs to be revisited..  In
+particular, it needs to mHitmapGraphics.setColor and setBackground
+colors to the hitindex for the VO.  CONTINUE THERE![21:
+
+Wed Aug 15 22:16:31 2018 Well OK fixed, or at least addressed, that.
+But main thing is need to get on doing the transforms.  But sleep
+first I guess.
+
+:21]
+
+:20]
+
+:18]
+:17]
+
+:16][22:
+
+Thu Aug 16 09:48:24 2018 Well, it kind of looks like the hitmap
+display is plausible.  We have
+StageGraphics2D.setHitmapDisplay(boolean) to enable or disable drawing
+the hitmap on top of the StagePanel.
+
+Now we need to handle some mouse events!
+[23:
+
+Thu Aug 16 11:25:24 2018 OK we are capturing the events.  We need to
+deliver them now.  If (gah!) we use the hitmap we're going to find the
+deepest guy first, even if he doesn't want it.  So we're going to have
+to climb the parent links in that case.
+
+We also need to prepare to handle the drag case, when we can be
+delivering events to the guy previously clicked on, even though the
+drag event may be outside his boundaries.
+
+So perhaps we should make a StagePanel level 'EventProcessor' that
+would take charge of all such event dispatching issues.  It would run
+on the EDT when IO events (and timers?  or do they all run at
+simulation cycle level?) occur.  The hitmap will be valid because we
+will be between simulation cycles.
+
+EventProcessor will know if there is a drag in progress, and if so
+what VO is the drag target.  EventProcessor will notice mouse exits
+and break any active drags at such times.  EventProcessor will climb
+the VO parent chain looking for someone to handle an event.  It will
+use the inverse of the mVOCtoPixelAT to map the event into each VO's
+space.  (Does it do that before it knows if the VO wants the event?)
+
+[24:
+
+Thu Aug 16 11:41:58 2018 Maybe we let the VO map the event, if it
+cares or needs to in order to decide whether to handle the event.
+
+Interface ideas:
+
+VO
+ boolean handle(IOEvent) - return true if event handled by this VO
+
+IOEvent
+
+ Point2D getEventVOC(VO, Point2D dest) - map event to local
+     coordinates or return null if event isn't associated with a
+     screen position?  Or return (0,0)?  null is better.  But we still
+     need to analyze and break out event types somewhere.
+
+[25:
+
+Thu Aug 16 13:34:34 2018 In Placitas til Monday.
+
+So, we want a class hierarchy for handling events?  That roots at VO
+or StandardVO?  Or just a flat adapter style there?
+
+I'd like to simplify dragging at least, here.  So what are my events?
+
+click possibly with keyboard modifiers
+double-click ditto
+wheel ditto
+keypress ditto
+keytyped ditto
+keyrelease
+drag
+enter
+exit
+
+[26:
+
+Thu Aug 16 14:05:44 2018 I guess we'd like to be able to specify such
+key combos pretty obviously and flexibly too.  Like KeyTyped-'Z' or
+Ctrl-Shift-Left-Double-Click or Meta-Wheel or whatever.
+
+So a list of filter->handler pairs at StandardVO, plus a single
+boolean handleIOEvent(IOEvent) at VO?
+
+So, an IOEventFilter interface?[27:
+
+Thu Aug 16 14:27:45 2018 Here's a question: Do we want to maintain a
+mouse position explicitly, independent of any actual events?  In
+particular, suppose the mouse is not moving but the VOs are.
+Shouldn't we get mouse enter and exit events due to the VO motion?
+
+So how could this work?  EventProcessor would not only maintain
+drag-in-progress, it would also maintain the mouse position.  And not
+only that, it remember what VO the mouse was currently in, and it
+could then tell from the hitmap if that had changed.
+
+EventProcessor should also manage the focus, I'd guess, and there
+should be GiveFocus and TakeFocus events that would get passed along
+when the VO under the mouse position changes.
+
+And I guess in fact we should be running some kind of CheckMouse thing
+at the end of each simulation cycle just to handle such VO changes,
+before we even go back to look for actual mouse events coming in from
+Java.
+
+EventProcessor.recheckMousePosition
+  check for consistency between the stored mouse position, the hitmap
+  VO, and the stored focus VO.
+
+hmm but if the top VO doesn't take the focus it'll fail hitmap
+matching even if there's no actual change of focus..
+
+Go up the VOs with an isFocusable event of some kind?  That's just a
+query and doesn't actually give or take focus.  And if whoever takes
+the focus is different than whoever had it before, we do exit and
+enter events.
+
+And we do the same thing on actual mouse motion events?  See who wants
+the new location, do exit+enter if necessary, then deliver the actual
+event? [28:
+
+Thu Aug 16 16:03:16 2018 I'm not liking the list of IOEventFilters so
+much, now that I'm implementing it.  It separates the event acceptance
+logic from the VO itself, which is inconvenient.  And it means we'd
+have to stick an isFocusable filter on everybody by default.  I'm more
+inclined to go (back) to an adapter-style, where there's some few
+categories of event types and you subclass and override for whichever
+ones you want.
+
+So what are those categories?  Mouse events and keyboard events?
+Where does isFocusable go?  The whole list, from above?[29:
+
+Thu Aug 16 16:34:20 2018 Well let's list it out.
+
+Focus: accepts, take, give
+Keyboard: press, release, type
+Mouse: press, release, click, drag, enter, exit
+
+Can we minimize that a bit?  That's a dozen handlers as it stands.  I
+don't think we can make it just three.. or can we?
+
+VO
+  boolean isFocusableAt(Point2D)
+  void acceptFocusAt(Point2D)
+  void releaseFocus()
+
+..how does mouse enter/exit work with focus?  are they the same thing?
+well, I could imagine no.  We might want to mouse crap around without
+taking the keyboard focus.  In fact you'd kind of think that would be
+the default.  Only text-y boxes would really want the focus and even
+there not necessarily always.  Mouse enter/exit a text box -- you can
+drag and zoom it..  click in it to edit, and then it wants the
+keyboard focus.
+
+So then does this isFocusable concept go away?  Or is it just renamed?
+isEnterable or something?  isTarget?  I guess normally they are really
+separate notions that sometimes go together.  Focus has next and prev,
+all that sort of thing, that mouse target does not have.[30:
+
+Fri Aug 17 14:23:29 2018 Well I'm supposed to be working on the text
+project summary for Jeff but I don't want to.  So let's hack.  Issue
+now is to commit to some scheme for event descriptions long enough to
+implement.
+
+[31:
+
+Fri Aug 17 14:56:11 2018 Actually, why is it, again, that we want some
+'mousable' notion independent of taking a given event?  Oh right, so
+we can synthesize enter and exit events when an object moves out from
+under the mouse.  Right.  So.
+
+boolean isMouseAware -- return true to be a potential target of Mouse*
+                        events, false to be 'mouse blind', like you're
+                        just painted onto your enclosing VO
+
+boolean isFocusAware -- return true to be a potential target of Key*
+                        events.  (Note if you are isMouseAware but
+                        !isFocusAware, you can still distinguish
+                        between mouse events with different keyboard
+                        modifiers, but you won't get any actual
+                        keyboard events.)
+
+
+void mouseEntered(Point2D at) -- you don't get to pass on this.  If
+                                 you are isMouseAware, we just tell
+                                 you when the mouse is in you (and
+                                 where within you it is initially at),
+                                 and you remember that or not as you
+                                 wish.
+
+void mouseExited() -- ditto: this is a notification, not an option.
+[33:
+                      mouseExiteed and mouseEntered notifications are
+                      delivered to the old and new mMouseTargetVO
+                      values as seen by the StagePanel.  If a VO has
+                      any modifiable state that depends on being the
+                      mMouseTargetVO, it must update that state
+                      appropriately even if it is disabled.
+
+
+boolean handleMouseEvent(MouseEventInfo mei) -- potentially handle a
+                      mouse-related event for which this VO is next in
+                      line.  Return false to say you didn't want it,
+                      true to say you consumed it.  All clicks come
+                      through here -- single, double, with or without
+                      keyboard-modifiers, etc -- and all drags, and
+                      all wheel events as well.
+
+boolean handleKeyboardEvent(KeyboardEventInfo kei) -- potentially
+                      handle a keyboard-related event for which this
+                      VO is next in line.  Return false to say you
+                      didn't want it, true to say you consumed it.
+                      All press, release, and typed events come
+                      through here.
+
+boolean handleSpecialEvent(SpecialEventInfo sei) -- potentially
+
+                      handle some other special event not obviously
+                      related to mouse or keyboard, for which this VO
+                      is next in line.  Special events are initially
+                      here to keep dev from cramming irrelevant stuff
+                      into kbd or mouse handlers, but might include
+                      things like window resizing or custom app
+                      signaling.  Return false to say you didn't want
+                      it, true to say you consumed it.  All WTFnose
+                      events come through here.
+
+:33]
+[32:
+
+Fri Aug 17 16:09:17 2018 Do we even want notifications like that, vs
+just managing the 'mouse owner' externally and letting each VO ask if
+it's the owner when it cares?  That way we can't end up with two guys
+thinking they're both the owner?  And what about responding to
+mouseExited when you've disabled yourself?
+
+The problem with external management is you still need to reask the
+hitmap target each time and the problem just recurs there.  He might
+have disabled himself on the current update.. but then he'd just say
+no and the external thing would move on..
+
+The thing we'd really like to fix is drag finishes getting lost due to
+exiting the cursor exiting the entire window and stuff like that.  So
+let's just let it ride for now.  At least there's hope to
+impedance-match our enter/exits with the larger window system..
+
+So.  Continuing.
+
+:32]
+
+:31]
+
+:30]
+
+:29]
+
+:28]
+
+
+:27]
+
+:26]
+:25]
+
+:24]
+
+:23]
+:22]
+[34:
+
+Sat Aug 18 13:10:15 2018 OK so well progress.  We have exact hitmap
+processing.  We have mouse target VO processing including when VOs
+move in and out under a non-moving mouse.  We have an EventAwareVO
+base class that's currently throwing NYI all the VO-level event
+handlers.
+
+So now we need some non-trivial way of telling EventAwareVO which
+specific (say mouse) events we wish to handle, and how.  Our spike
+goal is 'mouse click randomizes object color' so we're going for
+that.
+
+My inclination is (still) to want some kind of list-of-functors at the
+EventAwareVO level that we'll call in turn looking for somebody that
+claims the event.  But do we want to distinguish 'failing to match an
+event' from 'not wanting it'?
+
+If we pass a MouseWheelEvent to a keyboard event functor, that's
+failing to match an event?  But if we pass a MouseEvent click button 1
+to a mouse event functor that wanted control-click button 1, that's
+'not wanting it'?
+
+I guess if we made that distinction, down the road we could like
+replace the list-of-functors with a map-of-lists-of-functors..  but
+no, not really, right?  Or, having the distinction at runtime doesn't
+help with that.
+
+So what would this functor look like?
+[35:
+
+Sat Aug 18 13:59:20 2018 I guess really since Java 8 anyway (which we
+are not currently using, but) we really realy shouldn't call these
+lame-o old school Java function objects 'functors' anymore.
+
+:35]
+
+:34]
+[36:
+
+Sat Aug 18 16:39:49 2018 Here's a thing: So how is VO dragging
+supposed to work if the _parent_ of the dragged VO is moving?  :)
+
+Seems like the only unsurprising UI choice is we have to glue the
+dragged VO to the mouse regardless of what the parent is doing, which
+means if we just Ctrl-press-1 on an VO when its parent is moving, that
+should count as a drag even though no MOUSE_DRAGGED event may ever be
+seen.
+
+I suspect we need to grab the VOs mPose -- which is parent-relative --
+at MOUSE_PRESS time.  And do what with it?
+
+Although arguably we should wait for an actual mouse motion before
+declaring the drag to have started?  But why?  We already had the
+Ctrl-press-1 as an assertive act.  So fuck it.  Ctrl-press-1 on a VO
+inside another moving VO, and you're dragging it as of the next
+render, when we discover its in a different position relative to the
+mouse.
+[37:
+
+Sat Aug 18 17:20:08 2018 So a drag is about a VO moving relative to
+its parent (and thus typically, though not necessarily, moving
+relative to the stage).  And we think we want to do it
+relative.. wait.
+
+So for one thing we want to grab the _parent_'s mVOCToPixelAt, at the
+time of the MOUSE_PRESS.  That allows us to invert the MOUSE_PRESS
+pixel and get a starting coordinate in the parent's VOC.
+
+Then suppose the next thing that happens is checkAndUpdateMouseTarget
+from StagePanel.paintComponent.  No window system events have
+occured.  But in addition to -- or logically prior to, perhaps --
+updating the mouse target, we also check if a drag is in progress.  We
+discover it is.  [38:
+
+Sat Aug 18 17:42:47 2018 Whatever we do then, it is making us think
+there's a generalization in here somewhere -- another
+'resolutionStage' or something that occurs after painting but before
+general event processing begins.
+
+Or maybe it's just a stage of synthesizing certain events because the
+window system, not knowing about VOs, doesn't or can't make them
+itself.  In other words, the actual stage is something like the
+eventProcessingStage, and this resolution business is just a shim to
+synthesize events the window system can't.  We'll see.[39:
+
+Sat Aug 18 21:42:12 2018 So, can we express what this post-paint-stage
+resolution thing all does?
+
+1 - if dragging
+
+    1.1 - Compute the position of the cursor in mouse target VOCs.
+          That is the current drag offset.
+
+    1.2 - Compare the current drag offset to the original drag offset
+          that was computed on Ctrl-press-1.  If they are the same, we
+          are done with this post-phase.  (And we don't need to
+          consider target changing and exit/enter, because dragging
+          the current target prevents target changing from happening.)
+
+    1.3 - Otherwise, something has moved the mouse target since last
+          we looked, and the difference between them is amount that we
+          need to move the mouse target inside its parent to cancel it
+          out.
+
+          (Now I'm not immediately sure whether we can just add the
+          difference to the pose X & Y, or if we need to map it into
+          the parents VOC framework first.  It depends on the order
+          the pose transforms where computed, I think.  I kind of
+          think we translate, then rotate, then scale -- which makes
+          me think we'd want to map the delta back to the parent
+          space, and then add that to the mPose (x,y).  But some
+          testing should make that clear pretty quick.)
+
+          In any event, we figure out the correct delta and add it to
+          mouse target's mPose (x,y), and that (on the next redraw)
+          will bring the original drag offset position back under the
+          cursor.  And so we're done
+
+2 - if not dragging
+
+   do the existing exit/enter semantics
+
+
+3 - and there's no more cases just those two?
+
+Is there no limit to dragging?  No possible bounds on the parent?  We
+can drag to infinity and still be inside the parent who's way back in
+Ohio?
+[40:
+
+Sun Aug 19 05:52:47 2018 OK slept.  For now, no, there's no limit to
+dragging.  But if we want them, in the future, they'll be implemented
+as part of this interaction-invariant-maintenance processing.
+
+And we do note that we could ask the parent about whether (x,y) is a
+legal position for a child.  And if the parent wants to have bounds it
+can say so there.
+
+Also in the back of my mind there's another complication about VOs
+have a rotation center.  Right now, that's implicitly (0,0), but we'll
+definitely want to set that.  The presumption is it will just be an
+(x,y) in VOC space of the rotating VO, and we'll apply and unapply it
+around the rotation step.
+
+And I think for now we're going to try to do just the rotation center,
+since that actually seems like a fairly isolated change?  As long as
+we don't claim it's the origin.[41:
+
+Sun Aug 19 07:34:49 2018 Well, kind of think that went in pretty
+smoothly.  It's part of Pose, not VO directly.  [42:
+
+Sun Aug 19 07:53:34 2018 And now we have the scale zooming around the
+rotation center as well.  Which seems natural enough; we'll see how it
+goes down the road.  (Seems like we'll want to do mouse wheel zooming
+by moving the rotation center to the mouse hit and then changing the
+scale..  Hmm, what happens right now when we move the rotation
+center?[43:
+
+Sun Aug 19 08:37:44 2018 When we move the rotation center, it looks
+like the VO stays put relative to its parent.  Which is just perfectly
+lovely thank you very much.
+
+:43]
+
+:42]
+
+:41]
+
+:40]
+
+:39]
+
+:38]
+
+:37]
+
+:36]
+[44:
+
+Sun Aug 19 09:26:06 2018 OK so we're back to dragging, although it's
+now looking like nap first..[45:
+
+Sun Aug 19 15:43:16 2018 OK so a lot more than a nap but we're back.
+Right now EventAwareVO is doing a bunch of the dragging-handling that
+I suspect StagePanel should be doing.  Or at least they need to get
+along -- StagePanel needs to know who is being dragged.. or is that
+necessarily the same as the mouse target anyway?
+
+There's also the question of whether we really want to release a drag
+when the mouse goes outside the window anyway.  That's going to make
+it aggravating to drag things near the edge.  But it's supposed to be
+full screen.. [46:
+
+Sun Aug 19 16:08:09 2018 OK right now we're acting like the dragging
+logic is inside EventAwareVO.handleMouseEvent, but we don't like that
+because we'll have to do _something_ at StagePanel-level 'resolution
+time', and currently we'd have to fake up a window system MouseEvent
+to pass down.  So we don't want to do that.[47:
+
+Sun Aug 19 16:32:29 2018 So we want some separate drag-related call
+that EventAwareVO.handleMouseEvent and StagePanel.doMotionResolutions
+(nee checkAndUpdateMouseTarget) would both use.  But I guess we just
+have to implement something to know what we want..
+
+:47]
+
+:46]
+
+:45]
+
+:44]
+[48:
+
+Mon Aug 20 05:31:37 2018 OK so we're deliver EventAwareVO.drawAtStage
+methods now, with stage pixel locations and start/drag/stop
+indicators.  How do we actually do the drag compensation now?  We're
+capturing mDragStartPixel when the drag starts, but not sure if we
+need it..  We have our StandardVO.mVOCToPixelAt..
+
+I guess the idea was, on drag start, we need to take the stage pixel
+and map it into our space using mVOCToPixelAt.inverse, and the result
+of that is what we store in mDragStartVOC.  Then on drag continue, we
+do the same thing producing dragNowVOC.  If mDragStartVOC equals
+dragNowVOC, we're done.  Otherwise we compute dragDelta =
+dragNowVOC-mDragStartVOC; map that to the parent's space via mPoseAT,
+and add the results to our mPose x and y.  'Theoretically' that should
+bring mDragStartVOC back to at..
+
+
+:48]
+[49:
+
+Sat Sep  1 00:56:16 2018 OK jesus fuck let's fucking finish this
+already.
+
+Here's the idea:
+
+To make an object zoom and rotate around the mouse, we need that point
+to be the origin at the time we scale and rotate the affine
+transform.  But that's confusing because that point is going to move
+around every time we click or wheel, so calling it the origin is bad.
+
+So we're going to call it the 'object anchor point'.  And the actual
+origin of the object we're going to call the 'object origin point',
+and represent it by the vector from the object anchor point to the
+object origin point.
+
+The object anchor point is the offset in the parent of the anchor
+point of this object.
+
+So for a Pose, we have
+
+ float mPAX, mPAY;  // Position of our anchor in our parent's frame
+ float mR;          // Degrees rotation around (mAX,mAY) of our frame
+ float mSX, mSY;    // Scaling around (mAX,mAY) of our frame
+ float mOAX, mOAY;  // Position of our anchor in our frame
+
+[50:
+
+Sat Sep  1 01:06:05 2018 When we have an click or wheel at (SX,SY)
+we do this:
+
+1: Find the containing object OBJ using the hitmap with (SX,SY)
+2: Map (SX,SY) to (HITX,HITY) in OBJ space,
+   using OBJ.mVOCToPixelAT.inverseTransform(SX,SY)
+
+PROCEDURE moveAnchorTo(HITX,HITY):
+3: Map (HITX,HITY) in OBJ space to (PHITX,PHITY) in OBJ.mParent's space
+   using OBJ.mPoseAT.inverseTransform(HITX,HITY)
+4: Set (mPAX,mPAY) = (PHITX,PHITY), moving the anchor to the hit in the parent
+   set (mOAX,mOAY) = (HITX,HITY), moving the anchor to the hit in OBJ
+
+[51:
+
+Sat Sep  1 08:46:40 2018 And then, to compute mPoseAT, I think we want
+to do
+
+ mPoseAT.setToIdentity();
+ mPoseAT.translate(mPAX,mPAY);      // 4th: Translate to position in parent
+ mPoseAT.rotate(mR*Math.PI/180);    // 3rd: Orient object in parent frame
+ mPoseAT.scale(mSX,MSY);            // 2nd: Scale in object frame
+ mPoseAT.translate(-mOAX,-mOAY);    // 1st: Map anchor to origin
+
+:51]
+
+:50]
+
+:49]
+[52:
+
+Sat Sep  1 11:09:52 2018 OK, well, fucking finally.  We have zoom
+around and rotate around.  We've currently slightly broken drag, but
+believe that'll come in line once we reevaluate it with our new
+understanding.  But it's getting to be time to migrate code to the
+Lenovo for remote work for a few days..
+
+:52]
+[53:
+
+Sat Sep  1 13:51:13 2018 OK, so flag moved and shopped.  Time to fix
+dragging and then FUCKING MOVE ON TO FUCKING FUCKING CONTENT![54:
+
+Sat Sep  1 16:44:00 2018 OK, so took a nap and now dragging is fucking
+fucking fucking fixed.  Right now we're not affecting the anchor point
+during dragging, which is probably right.[55:
+
+Sat Sep  1 16:44:59 2018 But anyway OK so how about some
+
+TODO:
+
+ - Implement EventAwareVO.mAwarenessEnabled, ideally so that non-aware
+   EAVOs don't even appear in the hitmap.  ..is that right?
+
+Maybe it's a little too soon for to-dos.  Let's have a couple GOALs
+first.
+
+GOAL
+
+ - Be able to build complex VO constructions in which most of the
+   'internal' (offspring) VOs are mouse-inert -- so they act like
+   being painted on the floor of their parent, BY DEFAULT.  But we can
+   somehow 'unlock' them with GUI commands, and then manipulate them
+   individually, if desired, and then 'lock' them to the parent again.
+
+I fantasize that the EAVO that actually would receive a mouse event,
+given the mouse position, would throb slightly -- growing and
+shrinking around the mouse -- naturally taking all its kids along in
+the temporary scale changes.  And I imagine a wheel command --
+Meta-Wheel perhaps -- that would move the awareness point up and down
+a VO containment hierarchy.  Wheel up takes the current hitvo and
+passes the 'awareness' to its parent, thus deactivating the current
+hitvo.  Wheel down take the hit position and finds the child that
+_would_ own it, if it were aware, and moves the awareness to that
+child.  Or perhaps finds the nearest child, whatever.
+
+[56:
+
+Sat Sep  1 17:03:58 2018 So, how would we represent this 'awareness'?
+
+AWARENESS PROPERTIES:
+
+1 - It is ignored when actually drawing to the screen,
+2 - It is considered when drawing to the hitmap?  When drawing a
+    non-aware EAVO to the hitmap, we use the colors of its nearest
+    aware parent??
+
+[57:
+
+Sat Sep  1 17:07:02 2018 Hmm.  Maybe!  But, getting hungry.  Time to
+start cooking.
+
+:57]
+
+:56]
+
+:55]
+
+:54]
+
+:53]
+[58:
+
+Sun Sep  2 02:06:30 2018 OK.  So two 'quick' questions:
+
+1: How do we implement and manipulate 'mouse focus'?
+2: How do we implement dynamics like throbbing?
+
+On the second question, I'm focused on this: We can certainly modify
+the Pose.mSX,.mSY during update, but for say throbbing we want to be
+going above and below some persistent setpoint.  Where does that
+setpoint get stored, if not in the mSX,mSY?  If the throbber holds a
+base scale factor, which then gets modulated and applied to the Pose,
+then that's hidden state that will make zooming the throbbing object
+fail or be more difficult.
+
+What would be 'better' would be some kind of hookable 'modulation
+phase' that would say 'get the effective pose of this VO' during the
+draw state.. then the throbber would just remember its phase within
+the throb, and apply it by modifying the effective pose without
+actually changing the underlying 'real' pose.
+
+Well but that's pretty scary too, once we write it out like that.  We
+really don't want to open ourselves up to 'is it real or is it
+effective' games every time we need to access the Pose.  And
+especially given we assumed we could write to the Pose any time we
+wanted.. is that writing to the real Pose or the effective Pose?
+
+So suppose we ditch that.  The Pose is the one and only one true Pose,
+and dynamics that affect the Pose are going to have to have other ways
+of detecting and getting along with other external Pose influences.
+In particular, our throbber is going to need to track its phase plus
+its base scale factor, which would allow it to detect if external
+forces had modified the scale factor it was expecting, and to reset
+its base scale factor appropriately.
+
+So perhaps dynamics has steps like these:
+
+1- awaken: Happens at dynamics binding time.  Throbber example:
+   set phase to 0
+
+2- observe: Copy into model current state of anything we expect to
+   modify (e.g., in the Pose).  Throbber example: Capture current
+   scale (and possibly OXY).
+
+ENTRY POINT OF RUN-DYNAMICS HOOK
+
+3- monitor: Compare the model state to the real state.  If nothing
+   relevant has changed, goto step 5, otherwise goto step 4
+
+4- react: Respond to the detected difference.  Typical responses could
+   be: goto 1 (completely reinit based on current situation); goto 2
+   (just recapture externals while maintaining internals); goto 5
+   (force our view by overwriting changed externals); exit (deinstall
+   driver).
+
+5- plan: update internal state, update model.
+
+6- act: modify external state to match the model.
+
+EXIT RUN-DYNAMICS HOOK
+
+Could we rough out some kind of Dynamics interface and try to close in
+on some code here?
+
+[59:
+
+Sun Sep  2 13:04:16 2018 OK, we made a Driver interface, and now we
+have a BasicThrobber throbbing.  We want to make a BasicRattle, that
+rocks back and forth a few times and then stops, but we need a way to
+trigger it.
+
+So I think now it's time to get to event propagation -- or rather
+perhaps, extending event propagation to Drivers.  I mean we already
+have boxes changing color when clicked.  How does that work?[60:
+
+Sun Sep  2 13:08:17 2018 We have IOEventFilter.matches(IOEvent).
+StagePanel's event handling mechanisms update mMouseTarget.  If no
+hardcoded action takes an event, we use
+VO.handleMouseEvent(MouseEventInfo) to see if mMouseTarget wants it.
+If not, we climb its parent hierarchy until somebody does want it or
+we run out of parents.
+
+So, at a minimum we could just have Driver extend the interface..
+wait there is no interface.
+
+Right now VO just declares boolean handleMouseEvent(MouseEventInfo)
+directly.  But we could make some IOEventHandler interface for such
+things and have VO extend that.  Then Driver could extend it too.
+
+[61:
+
+Sun Sep  2 13:37:56 2018 I'm having trouble focusing on this because
+in my mind what I want is a way to do exact object overlaps, like
+we're currently doing exact mouse hits.  Like if when we draw to the
+hitmap, we could check what's underneath it, and whenever we overwrite
+the color of some other VO, we record that the thing that we are
+drawing is overlapping the thing whose color we overwrote.  But I
+don't immediately see any way to do that reasonably efficiently..
+
+The fantasy would be you could like zoom in on like a string "US" and
+then put like some little gravity balls inside the U and they would be
+held up by that like a cup, but then if you rotated the US 180 degrees
+the gravity balls would fall out and continue down..  So, objects
+interacting with the strokes of a font glyph, like that.  Exact
+interaction. [62:
+
+Sun Sep  2 15:32:15 2018 Post fambily meeting.[63:
+
+Sun Sep  2 15:32:27 2018 So, suppose we wanted to support such
+U-gravity balls in any fashion, not necessarily using something like
+the hitmap.
+
+We could do the 'halo render' idea that we were thinking about for
+signaling mouse awareness, where we render the thing scaled up
+slightly, using 'halo colors', and then render it again normally using
+normal colors.  Which would be cool and all.. but it doesn't really
+get us interactions unless we can somehow map-reduce over image
+intersections or something..[64:
+
+Sun Sep  2 16:04:56 2018 Which it's really not clear we can do any
+reasonable way.  As far as I can tell we'd probably end up getting the
+Raster or a pixel array from the drawn image and doing our own
+map-reduce over that.[65:
+
+Sun Sep  2 16:31:16 2018 So yes god damn it screw exact interactions.
+Let objects that want to know about other objects decide what region
+they want to look in and let them look.  How did the card comparator
+work in the Beyond Efficiency video?[66:
+
+Sun Sep  2 16:37:24 2018 In LectureAnim201309CACM,
+com.putable.dw.core.elements.cards.CardHolder.drive(long,Element)
+iterates over the kids of its own parent searching for instanceof
+Card, which it then computed the center of and checked if that was
+inside the CardHolder.. and captured it if so.
+[67:
+
+Sun Sep  2 16:45:32 2018 Suppose we can have a set of trigger points,
+which could be like our center, or our four corners, or whatever.  We
+have to choose them ourselves and manage them relative to how we draw
+ourselves, but once they're set up, we can have the infrastructure
+detect whenever a trigger point is not one of our colors in the
+hitmap, and generate an OverlapTriggerEvent or whatever when that
+happens.
+
+When do we check the trigger points?
+
+Well, when does the hitmap get computed?  It happens during/after
+AbstractJFrameStage->paintStage()->repaint().  Which eventually calls
+paintComponent on StagePanel, which calls drawVO recursively from
+mRoot, which calls VOGraphics2D.renderVO(vo), which calls
+StageGraphics2D.renderVO(vo), which calls
+StageGraphics2D.renderVOTo(vo, ...), which does the actual drawing to
+the screen and updates the hitmap.
+
+So, 'then'.  But we're not in control when all that's done.  I guess
+we could do it late in StagePanel.paintComponent?  Right in that gap
+where we update the mouse target.[68:
+
+Sun Sep  2 17:20:27 2018 So say we do that.  We rewalk the whole tree
+grr looking for triggered trigger points.  We can't do that check
+during the recursion because the whole point is the triggering object
+might be coming from any fucking where.
+
+So we rewalk the whole tree looking for triggered trigger points.
+When we find one we call..
+
+EventAwareVO.handleTriggerEvent(Point2D triggerPoint, VO otherVO)
+
+which returns.. boolean?  To stop further triggering on this VO?  Who
+knows.  Time to cook.[69:
+
+Mon Sep  3 00:46:41 2018 OK, well have a first cut at TriggerPoints
+and VO.handleOverlappedTriggerPoint.  Right now UnitAxes is checking
+its corners and reporting encroachments, but that's all.  Time to nap.
+[70:
+
+Mon Sep  3 02:05:15 2018 Actually got back into Saga (just vol III)
+for the first time in ages.  Now time to nap.
+
+:70]
+
+:69]
+
+:68]
+
+:67]
+
+:66]
+
+:65]
+
+:64]
+
+:63]
+
+:62]
+
+:61]
+
+:60]
+
+:59]
+:58]
+[71:
+
+Mon Sep  3 09:40:37 2018 OK, well, let's shift development towards
+lecture two needs, and let that drive further infrastructure stuff.
+
+We want:
+
+ - A bitvector
+   = With toggleable 0/1/* values (need '?' value too?)
+   = With pop-up or tool-tip style bit meanings
+ - A bitvector function value neighborhood (maybe not for lec2)
+ - Bitwise operations
+   = Not             0:1, 1:0                 *:*
+   = Match (EQV)     00:1, 01:0, 10:0, 11:1   0*:*, 1*:*, *0:*, *1:*
+   = Mismatch (XOR)  00:0, 01:1, 10:1, 11:0   0*:*, 1*:*, *0:*, *1:*
+   = Wild OR         00:0, 01:*, 10:*, 11:1   0*:*, 1*:*, *0:*, *1:*
+     (Clash? Generalize? Wildcard?)
+   = Wild AND        00:0, 01:0, 10:0, 11:1   0*:0, 1*:1, *0:0, *1:1
+     (Clash? Generalize? Wildcard?)
+
+ - Bitvector reductions
+   = Ones count
+   = Zeroes count
+   = Stars count (?)
+
+ - Compound operations
+   = Hamming distance = onesCount(mismatch(A,B))
+   = Subspace inference = wildOr(A,B)
+
+[72:
+
+Mon Sep  3 11:00:56 2018 OK well that's plenty of stuff to want but
+what is it all going to look like?  The ops in particular.  I can
+think of a couple viz:
+
+ 'standard arithmetic'
+
+     A
+  op B               A  op  B   =  C
+  ----
+     C
+
+
+ 'data flow graph'
+
+        A
+          \
+           \
+            v
+            op ---> C
+            ^
+           /
+          /
+        B
+
+
+[73:
+
+Mon Sep  3 11:09:24 2018 Can we make a stretchy connector for a graph
+edge, to point between objects and update automatically?  Main problem
+there seems to be what are the bounds of the pointed-to object, to
+know where the edge should terminate.
+
+And in general we're going to have to face object bounds sometime.
+How about now.  Suppose we raise up the concept of background -- where
+you paint background, that's your nominal object bounds and extent.
+You can draw outside that, like unitaxes does with some of its labels,
+but then you're accepting that stuff like that will not be taken into
+consideration when object bounds are consulted.
+
+Could we hillclimb over background color toward some given point?  Or,
+not background color, but some given VO.  Start at target and
+hillclimb toward some given point until we reach the given point or
+all uphill points are not the given VO.  Cache the result somehow
+perhaps, if we can figure out when to invalidate it.
+
+Let's take a whack at it, anyway, be fun.[74:
+
+Mon Sep  3 12:03:33 2018 So, issue now is that the obvious place for
+the ConnectorLine to decide where it wants to be is in updateThisVO,
+but to hillclimb in the hitmap it needs access to the hitmap, but the
+hitmap is inside StageGraphics2D which is hell and gone from
+updateThisVO.
+
+Given that we are (sort of necessarily) hillclimbing in pixel space,
+it's hard to claim that the hitmap is 'just a rendering' separate from
+the 'real physics'.  Right?  So perhaps we need to raise the Hitmap
+from the StageGraphics2D to the Stage itself, and have updateThisVO
+take a Stage rather than a World.  We're saying all along that any
+given VO can only be on one Stage at a time, so it's not like multiple
+Stages can be just different views of a single underlying thing.
+[75:
+
+Mon Sep  3 12:16:01 2018 What if we did do an offscreen image for each
+object, and render to that?  And then draw to the screen by blitting
+all the rendered images in their proper place and order.  That would
+make it the reality be like an image stack -- but all registered in
+pixel coordinates -- and we could hillclimb on a background image even
+if there was stuff drawn on top.
+
+(Possibly we could just hillclimb from the previous connector
+attachment point, rather than restart from the object anchor every
+time..  Falling back to the object anchor if the object no longer hits
+on the previous connector attachment point. [76: Mon Sep  3 12:28:46
+2018 Actually it would be cool and better for performance to have the
+connectors just hillclimb some small number of steps per update, so
+you could see it updating when things change.  :76])
+
+Of the many problems with this idea the one getting me now is how do
+we know how big the object's background image needs to be?  It's the
+same old story.  If the object's extent is only determined implicitly
+by drawing, we can't know ahead of time how far that drawing will
+go..  We'd have to draw it on an empty-but-full-screen-sized image, so
+any cropping would be what was going to happen in the final render
+anyway. 
+[77:
+
+Mon Sep  3 12:30:23 2018 I do like the idea of having a privileged 
+background 'layer' for each VO, though, and having that in effect
+specify the object boundary.
+
+But suppose we ditch the image stack idea as too expensive, and
+consider associating hitmap colors not just with a single VO but with
+a linked list of the VO and all its parents?  So you could if you
+wanted hillclimb through the children as well as the parent, and the
+attachment point could in fact end up in a pixel that the parent
+didn't paint, but some child did.
+
+So as we did the render, we'd make a graph of each child pointing back
+to its parent.. wait we already have that, we don't have to do
+anything different at render time.  We just climb parent pointers
+during lookup.
+
+boolean Hitmap.isPixelDescendedFromVO(VO base, int x, int y) {
+   VO vo = getVOForPixel(x,y);
+   while (vo != null) {
+     if (vo == base) return true;
+     vo = vo.getParent();
+   }
+   return false;
+}
+
+
+:77]
+:75]
+
+:74]
+
+:73]
+
+:72]
+
+:71]
+[78:
+
+Tue Sep  4 17:39:28 2018 OK, we're back in ABQ, and trying to get to
+satisfactory on ConnectorLines.  Here's the situation:
+
+ - ConnectorLine is given two VOs that it is supposed to connect
+   visually.  The VOs are not necessarily siblings to each other and
+   the ConnectorLine has no necessary ancestral relation to either of
+   them.
+
+ - ConnectorLine maintains two Point2D endpoints that determine where
+   it draws.  It uses stochastic hillclimbing attempting to minimize
+   the euclidean-squared distance between the endpoints, while keeping
+   each endpoint on top of pixels drawn by the corresponding VO.
+
+[79: Tue Sep  4 23:45:33 2018 
+
+ - We have also added a rule that says if an EventAwareVO is currently
+   _not_ mouse-aware, they are not drawn to the hitmap and therefore
+   will never catch any events.  Which is scary but actually probably
+   close to just right.  At present, ConnectorLines are
+   non-mouse-aware EventAwareVOs, because otherwise they run into
+   themselves when they are trying to hillclimb on their VO targets.
+
+ - So that means, at present, we cannot grab ConnectorLines and do
+   anything with them.  So be it.
+
+ - The immediate next issue is reorganizing this first-cut
+   hillclimbing code.  Problems to be addressed include:
+
+   = Division of labor between Hitmap and ConnectorLine, possibly
+     and/or also some kind of added Search or Hillclimb interface
+
+   = There are two main cases, currently muddled, that need to be
+     pulled cleanly apart:
+
+     (1) When our current point is in fact on a pixel drawn by its
+         target, and we want to preserve that while hillclimbing to
+         shorten the ConnectorLine, versus
+
+     (2) When our current point is not on a pixel drawn by our target,
+         and we need to fucking find a pixel drawn by our target.
+
+Our general strategy for case (2) is to head towards the target's
+object anchor, even though there's currently no guarantee that the
+object anchor is on a pixel drawn by the target (or one of its
+children).  When doing case (2) we don't care what we're walking over,
+as long as it isn't a target(-descended) pixel, so we currently just
+going steepest ascent, although we could go like via Bresenham's
+algorithm if we wanted to avoid doing only diagonal moves until we're
+on an axis.[80:
+
+Wed Sep  5 00:29:14 2018 As I write this, an alternate approach might
+be like to do zeno's paradox instead, and like just move say 5% of the
+distance to the object anchor each time, with a minimum of one pixel
+if we're further away than that..  In typical cases where we're close
+but an edge just got away from us, that might often find a pixel in
+like one move..
+
+And again as I write this, I see a riskier but also often nice
+heuristic would be to hill _descend_ when we lose the pixel.  Extend,
+rather than shrink, the ConnectorLine -- by a few pixels of a perhaps
+a few percent -- without changing its angle.  We'd have to backstop it
+with heading for the object anchor, though.
+
+We also ought to be checking if our VOs are killed or disabled, and
+doing something appropriate with the ConnectorLines -- like at least
+shrinking back to the live end, if there is one.
+[81:
+
+Wed Sep  5 01:10:24 2018 So, suppose if we lose the target, we
+immediately (atomically) hill descend for some modest number of tries,
+trying to reacquire it.  If we succeed, we continue with a normal
+hillclimb step, but if we fail, we go back to where we were and do
+like 5% object anchor move and call it a day.
+
+So if an object is moving away from us at not too fast a speed, we'll
+typically reacquire it without relying on the object anchor moves.[82:
+
+Wed Sep  5 02:17:58 2018 So we might make a little state machine for a
+ConnectorLine end:
+
+ state TRACKING:
+   If not on target pixel, goto state START_HUNTING,
+   otherwise goto state HILLCLIMBING
+
+ state START_HUNTING
+    Set hunt_counter = H and goto state HUNTING
+
+ state HUNTING
+    If on target pixel goto state HILLCLIMBING, otherwise,
+    if hunt_count = 0 goto state ACQUIRING, otherwise do one
+    stochastic hill descending step, decrement hunt_count, and goto
+    state HUNTING
+    
+ state ACQUIRING
+    Set current to 5% of difference between current and object anchor,
+    unless that is the same as current, in which case go to the object
+    anchor.  Goto state EXIT.
+
+ state HILLCLIMBING
+    do K stochastic hillclimb steps and goto state EXIT
+
+ state EXIT
+    present
+[83:
+
+Wed Sep  5 12:31:51 2018 OK so come on here.  Let's get to
+implementability here and implement dammit.  Before sleep I wasn't
+liking that state machine so much because I was unsure about (1) how
+the decisions at the two ends will come together, and (2) exactly what
+should be atomic (single pass through the state machine) and what
+shouldn't.
+
+So let's go again.
+
+A local search interface would represent
+
+ - S: A space
+ - P: A position in that space
+ - G: A move generator G(P,S) -> P'
+ - F: A fitness function F(P,S) -> real
+ - 
+ 
+This would suffice for stuff ranging from steepest ascent to simulated
+annealing.  If we say we're talking HitmapLocalSearch, S is the
+Hitmap and P is a Point2D.
+
+Now if we're saying the evaluation of F(P,S) is 'the' atomic level,
+then G or its users will have to maintain enough state to remember
+what they're doing.  And that state could include this whole
+'hypothetical stochastic wandering' we're doing.
+
+I think maybe we'd like to alternate SHC moves at the two ends, and
+let the 'hypotheticals' at each end take part in the evaluation of the
+other end, so the ends could jointly rattle each other loose from a
+local max.
+
+But then we still don't accept the hypothetical unless it actually
+improves over where both ends started.  So the number of hypothetical
+steps performed determines how big a local max we'd have even a chance
+of escaping.
+
+[84:
+
+Wed Sep  5 12:54:02 2018 So.  The two-ends interleaved search seems
+pretty specific to ConnectorLine, but we'd been imagining that 'search
+on hitmap objects' would be rather more general than that.  So where
+do we cut it, again?
+
+Well, let's make one step of one end of HitmapLocalSearch, and leave
+everything else to caller.
+
+[85:
+
+Wed Sep  5 13:33:45 2018 Trying to make Hitmap.LocalSearcher,
+wondering whether having the move generator be atomic is not what we
+want.  In the first use case, stochastic hillclimbing, even finding a 
+candidate move might be a problem.  We could break generate() +
+evaluate() into modify() + accept() + evaluate().
+
+:85]
+
+:84]
+
+:83]
+:82]
+
+
+ 
+:81]
+
+:80]
+
+:79]
+
+:78]
+[86:
+
+Thu Sep  6 16:39:54 2018 Well, it appears we have a tolerable
+ConnectorLine, with goofy but cute pixel-exact edge hunting to find
+the arrow placement.  There's still various weirdnesses about the
+optimization -- it doesn't always get to where you'd kind of expect it
+to get to -- but it's good enough I'm calling it for now and moving
+on/back to bitvector itself.
+
+:86]
+[87:
+
+Fri Sep  7 01:01:27 2018 OK, let's go for some kind of tooltip, which
+we'll also use for like bit semantics labels, and then go for a bit
+for bit vector.
+
+Tooltip: Non-mouse aware text string at a fixed size on the screen,
+always horizontal, with a yellow background.  Let designer render the
+text -- including line breaks, as HTML, and infra just does the stupid
+<HTML> hack, gets the extents, spreads them, and uses that for the
+background.
+
+Tooltip appears some fixed time (say one second) after a target
+change/entry, and stays until exit.  Ideally, on target change, we'd
+know whether a tooltip is already posted, and if so, if the new target
+also has a tooltip we'd immediately post that instead of waiting a
+second.  That could let us scan down a bit vector and post all the
+labels on after the other.   ...Hmm do we really want bit labels to be
+tooltips?  Normally we'd want a bunch of them posted all at once, but
+the signal feature of a tooltip is there's just one at a time.
+
+Bit labels, it seems, would rather be 'postable labels', that would
+appear next to the bit in local coordinates, and be one line, with no
+highlighting.  At least, let's fuck the tooltip as yomamaz UX, and
+just go for Bit, then with construction tools to make a linear array
+of them..[88:
+
+Fri Sep  7 04:51:01 2018 Well, working on WildBitVector now, and was
+seeing weird behavior where my 0s and 1s were aligned when I drew the
+thing, but their vertical position drifted when I rotated the whole
+vector.
+
+It was as if FontMetrics.getAscent() and .getDescent() somehow cared
+what the overall rotation of the text was.  Which makes no sense?
+
+Yes.  It makes no sense.  Because it's a fucking Java bug.
+
+It's an instance of https://bugs.openjdk.java.net/browse/JDK-8139178 -
+
+.. Wrong fontMetrics when printing in Landscape (OpenJDK) 
+.. A DESCRIPTION OF THE PROBLEM : When printing in landscape, getting
+FontMetrics returns wrong font parameters - ascent=0, descent=0,
+height=0
+
+Thanks.  Thanks Guys.  And, the bug is tagged 'OpenJDK-only' so
+WTFnose when if ever it'll be fixed.
+
+So.  We need to capture the font metrics in an unrotated space, and
+remember them.
+
+:88]
+
+:87]
+[89:
+
+Sun Sep  9 05:37:28 2018 OK, well, was working on lec2 content, but it
+became quickly obvious that we're going to need image support, so we
+subgoaled to that.  And it's a bitch because we can't control all the
+colors in an image, so the hitmap gets fucked up.
+
+I think I'm going refactor to drawThisVO(Graphics2D g2d, boolean
+writingHitmap) so VOs can draw differently if they need to.[90:
+
+Sun Sep  9 06:24:46 2018 Well, so here's the thing.  When we load an
+image, we could build a second BufferedImage just for use on the
+hitmap.  We'd fill that image with alpha 0.  Then we'd do a one-time
+pixel-by-pixel scan (if needed) and for each pixel that's more than
+50% alpha, we'd draw the hitmap foreground color at 100% alpha.
+
+Then we'd draw that image to the hitmap, instead of the actual image
+that we draw to the screen.  And the result would be that each pixel
+that's "mostly" there would count as a hit and we could grab it there
+and so forth.
+
+Except for one thing.
+
+Since the damn hitmap foreground color is per-render-dynamic, we'd
+have to do that whole process every render, which is hopeless.
+
+I just spent some time going down an 'animated MemoryImageSource'
+rabbit hole, wherein we'd create and IndexedColor image and animate
+changing the ColorModel.. and it could likely mostly go through, but
+it's a lot of work and hair and getting the ColorModel to hold the
+exact 24 bit hitmap color we want seems non-trivial, because I don't
+immediately see an option where Java lets us fill the slots of a
+color map directly, as opposed to having a bunch of predefined color
+spaces and having Java do best match on the colors we ask for.
+[92:
+
+Sun Sep  9 13:10:09 2018 What am I missing here?  IndexColorModel sure
+_looks_ like we can supply any colormap we want, so long as we break
+it up into byte[] r, byte[] g,byte[] b, components.  Making a new one
+of those doesn't look very hard.
+
+On the other hand it doesn't look all that efficient either, in the
+sense that the pixels, I think, all get copied twice per render.  In
+the ColorCycler example, imageSource.newPixels(.., newColorMap, ..)
+causes the entire MemoryImageSource to be walked again, and the
+re-expanded 32 bit colors are written to 'image', the ImageConsumer.
+Then the repaint() triggers paintComponent which uses
+drawImage(image,.. ) to copy those expanded pixels to the screen.
+
+:92]
+Maybe that could be solved.  Maybe.  But what a drag.  And for what?
+So that Hitmap can avoid clearing its image every render.  We're
+already clearing the whole screen every render.  If we just agree to
+clear the Hitmap image every render, we can assign _static_ colors to
+each VO, any time the VO has access to the Hitmap anyway, and it can
+just use them as it wishes.
+
+But foreground and background colors already have API in Graphics2D.
+Any other 'logical' colors we might want do not.  How is that supposed
+to work?  The VO would have to specify a logical name for the color
+somehow, and then request it by that name..  But of course Graphics2D
+will not do this.  We'd have to go back to like
+
+ drawThisVO(VOGraphics2D v)
+   Graphics2D g = v.getGraphics();
+   
+..well, at that point we could ask drawThisVO'ers to go through v for
+color setting:
+
+  v.setColor(whatever);
+  v.g2d.drawString("whatever"..)
+
+and since VOGraphics can know what VO is doing the drawing right now,
+it can swap the colors appropriately.  That handles 'everything but
+images', which we'll special case as we're doing.  I guess we should
+wrap our special-caseness though, and make a VOImage or something.
+
+new VOImage(BufferedImage bi) - stores bi and builds the hitmap image
+
+BufferedImage VOImage.getImage(VOGraphics2D v2d) - returns either the
+original bi or the hitmap image depending on v2d.isHitmapRender() or
+whatever. [91:
+
+Sun Sep  9 12:42:29 2018 OK, after nap. So let's do this.
+
+(1) drawThisVO(Graphics2D) -> drawThisVO(VOGraphics2D)
+(2) VOGraphics2D : void setColor(Color) ; void setBackgroundColor(Color) ?
+    Do we need this immediately?  If image is special casing, and
+    everybody else only uses StandardVO.setBackground and
+    setForeground, why do we need this?[93: Sun Sep  9 14:55:05 2018
+    Yeah, skipping this (2) for now.
+
+(3) Hitmap assigns static colors per VO, never (?) clears the hash
+    tables, but clears the hitmap every start-of-render.
+
+(4) VOImage delays building the hitmap image until first hitmap
+    render, and gets a hitmap color then.
+
+[94:
+
+Sun Sep  9 15:18:54 2018 If we're making it static why do we need the
+Hitmap.mVOToIndex hashmap at all?  Why not have VO just hold on to its
+one-and-only hitmap color, and we just use VO.getHitmapColor() when
+it's time to set up the g2d?  Well, how do we assign these colors?  If
+VOs get GC-d and new ones created, how do we know their colors are
+available again?  I guess we don't, and that's an advantage of
+per-render colors like the current scheme.
+
+But we can have anyway 16 million program lifetime VOs without having
+to dip into alpha bits.  And I think we could take the alpha bits if
+we needed to; just reserving one bit so that assigned colors never had
+zero alpha.  So we could have two billion VOs per run.  Yah.  And you
+should really be statically allocating all the VOs you want at the
+top, and just enabling/disabling most of the time anyway..
+
+
+:94]
+
+:93]
+    
+
+:91]
+
+:90]
+
+:89]
+[95:
+
+Sun Sep  9 17:31:04 2018 OK, well it's kind of muddied-up, with
+incomplete redesign from dynamic hitcolors to lazily-allocated static
+ones, but it's running again, and we can drag images by their
+non-transparent pixels..
+
+:95]
+[96:
+
+Tue Sep 11 02:04:11 2018 Well, we're trying to do slides now -- slides
+as VOs, I mean -- and we've got a simple HTML slide that we're
+managing to render into a FileSlide VO, which very conveniently
+reloads automatically whenever the file changes.  But the colors the
+HTML renderer chooses to use aren't selected by Hitmap, of course, so
+we can't drag a slide by its text, even though we can drag it by its
+background.  (And, of course, lest that seem like the only downside,
+we might have a collision in hitmap color and end up trying to drag
+something that wasn't even under the mouse.)
+
+So we need to just drag the frame but not the HTML content when doing
+hitmap rendering.  Well, we have enough API to do that now, right?[97:
+
+Tue Sep 11 02:12:37 2018 Yes we do.  Fixed.  That was quite easy.
+
+Pop pop.[98:
+
+Tue Sep 11 02:12:51 2018 So given the tight editing loop and emacs
+power, I figure to just author in basic HTML.  But we need a text
+format for loading objects too.
+
+So:
+
+ - Literal java serialization?  No, way to fragile.
+
+ - Home brew serialization?  Make a standard packet framing (escape
+   \n's then terminate with \n) so we can read the stream regardless.
+
+We need to serialize a tree of these things, and the idea is each
+slide, after its html, will potentially have such a tree, rooted on
+the slide itself.
+
+So we need to name each slide..  Well, each VO, actually, since things
+like ConnectorLines easily point in non-tree-following directions.
+Like it could point to a different slide.
+
+So let's use dotted sub-tree notation for VOs.  Each VO must
+
+ (1) Be ultimately rooted, somehow, in the overall master tree, and
+ (2) Have exactly one canonical location in that tree.
+
+For example, ConnectorLine takes second references to its ending VOs.
+Those second references will need to be written out as dotted-subtree
+names, but they will not be definitional.
+
+So we can walk an existing tree from the root and assign dotted
+subtree names to everything based on child order.
+
+The root's name is "0".  Its first child's name is "0.0".  Its fourth
+child's third child's name is "0.3.2".
+
+[99:
+
+Tue Sep 11 04:02:05 2018 That's fine for a snapshot but it's terrible
+for editing.  We add a new kid early and all the subsequent references
+break.  But to avoid that we have to have names of some kind.  Well
+suppose we do.  A VO can have a name, which has to be unique among its
+siblings on loading, and which on saving will be gensymmed via
+toString if null.
+
+So then each VO must explicitly have a list of the names of its
+children, and that list is what determines the order and ownership.
+
+I'm thinking a one-line representation of a VO is not going to do it.
+I wonder how much hair it would take to generate say JSON..[100:
+
+Tue Sep 11 04:24:59 2018 Well even in 2018 it doesn't look like OoB
+JSON is that great.  I didn't go for the Java EE version of Eclipse
+and it looks like that's what I'd need for javax.json.JSONObject and
+such..  But it looks like more hair than I want anyway.
+
+So how simple and clean could we make a VO-only solution?
+
+1: Have each VO just write out its own fucking self.  Provide helper
+   methods to write Strings, VO names, whatever.
+
+2: Every serialized form begins with the fully-qualified class name,
+which must name a subclass of VO, and must have a static factory
+method to parse the rest of its package..
+
+Barf.  That already doesn't look simple and clean at all.
+
+Require each VO to have a no-arg ctor.  Read the package name, build
+one, and call VO.configure(argsequence).
+
+But, it's not recursive, so we can't configure the whole thing in one
+go.  We have to configure everything but pointers for this object, do
+the same for all the objects, then go back and resolve pointers after
+we know the names of all the objects.
+
+So VO.configureLocals(argsequence) first.  Then
+VO.resolvePointers(argsequence) later.  Or something.
+
+[101:
+
+Tue Sep 11 04:42:13 2018 Some examples please.
+
+Well first what's an argsequence?
+
+Was thinking the format would be something like:
+
+#213:com.putable.videx.std.vo.WiggleSquare {
+  mPose: #214
+  mScaleScale: 0.1
+  mScale: 1
+  mXvel: 0
+  mYvel: 0
+  mSvel: 1
+  mRvel: 0
+}
+
+#214:com.putable.videx.core.Pose {
+  mPAX: 1.2333
+  mPAY: 3838383.0
+  mR: 0
+  mOAX: 101
+  mOAX: 33
+  mSX: 2
+  mXY: 2
+}
+
+#233:com.putable.videx.std.vo.UnitAxes {
+  mVO: [ #19 #212 ]
+}
+[102:
+
+Tue Sep 11 04:58:50 2018 Well, that'd be pretty much reinventing JSON
+except for the inter-object linking[103:
+
+Tue Sep 11 05:02:40 2018 But my god just took a look at, say, the
+churning feast that is 'jackson', alleged to be the best of the JSON
+for Java packages out there.
+
+Trying to do actually-general-purpose Java de/serialization is a plain
+bitch. 
+
+:103]
+
+:102]
+
+
+:101]
+
+:100]
+
+:99]
+
+:98]
+
+:97]
+
+:96]
+[104:
+
+Tue Sep 11 08:02:11 2018 OK, we have a StreamTokenizer-based Lexer and
+now we need a grammar:
+
+TREE -> OBJS EOF
+OBJS -> e | OBJ OBJS
+OBJ  -> ONUM COLON TYPE BLOCK
+TYPE -> ID
+BLOCK -> OPEN_CURLY DEFS CLOSE_CURLY
+DEFS -> e | DEF DEFS
+DEF -> MEMBER COLON VALUE
+MEMBER -> ID
+VALUE -> NUM | STRING | ONUM | LIST
+LIST -> OPEN_SQUARE VALS CLOSE_SQUARE
+VALS -> e | VALUE VALS
+
+[105:
+
+Tue Sep 11 08:18:39 2018 OK, now we need to parse that and make some
+ASTs, from which we'll gradually build our objects as we resolve
+pointers and stuff.[106:
+
+Wed Sep 12 05:28:23 2018 OK, had to divert to other tasks for much of
+the overnight, but we'd already gotten parsing and AST's and early
+semantic checks going.  And we can print from the AST and get usable
+output except we're not escaping inside quoted strings yet.[107:
+
+Thu Sep 13 03:52:27 2018 Well, seem to've lost a whole fogging day
+there but had appointments OitRW, and did some team debugging on MFM,
+and did do a disgusting but likely serviceable escaping inside quoted
+strings.
+
+So today the goal is:
+
+ - Directory == SlideDeck: Support loading all the resource files in a
+   dir, and
+
+ - Support loading only the changed resource files in a dir, and use
+   the changed subtrees to reconfigure the existing tree.
+
+In other words:
+
+On full load: Discard internal mRoot, and flush the main AST, thus
+tossing everything, then call incremental update.
+
+On increment update:
+ Call incremental reload slidedeck
+ Call incremental check slidedeck
+ Call incremental .. FOG IT THIS IS WAY OVERKILL DAMMIT JUST DO GLOBAL RELOAD FOR NOW YOU HOPELESS YOTZOID TIME-WASTER
+
+On incremental reload slidedeck: Reload target directory, and iterate
+to find all our slide files in it.  For each such file, call
+incremental reload.
+
+On incremental reload slide: Check file modification date against
+stored value in the AST for this slide.  If newer or no AST, call load
+slide
+
+On load slide, parse slide contents to new AST
+
+:107]
+
+:106]
+
+:105]
+:104]
+[108:
+
+Thu Sep 13 04:19:02 2018 OK full load full load FULL LOAD it is, but
+still we need:
+
+ - syntax for the slide overall: 'HTML' + 'JSON'.  We're assuming the
+   HTML won't be that huge or complex, because our pitiful little
+   JLabel-based parser doesn't do complex, so we don't see a big need
+   to interleave the two.
+
+ - Parser for that syntax, producing an ASTSlide
+
+ - SlideDeck framework to hold the slides as ASTs.  ASTSlideDeck I
+   guess.  Let's just go for that now.[109:
+
+Fri Sep 14 02:41:57 2018 OK, so we are loading the slides in a slide
+deck directory, and associating .vos and .html based on base file name
+which == slide name.  We are checking for non-SerDes objects,
+duplicate onum declarations, and missing object declarations.  We are
+not currently checking for unused onums but I guess we could if we
+wanted.
+
+But really it seems we should start instantiation VOs, instead.
+
+Let's take a quick DDR break and then try that.[110:
+
+Fri Sep 14 03:04:58 2018 Well let's just try it.  Idea is to use
+reflection to create an instance of the specified SerDes type, then
+call something like SerDes.configureLocal(ASTObj) on it, and it's
+supposed to do all configuration _except_ for VO references.  We do
+configureLocal on everybody, then go back and do configureLinks on
+everybody..  Why exactly are we making them separate?  If the VOs are
+all just dead pre-lightning Frankenstein monsters, incapable of
+following or sanity checking links or whatever while dead, why can't
+we do the links at the same time?
+
+Well, let's give it a try.  SerDes.configureSelf(ASTObj yourmap)
+should set up everything, including links.  It can and perhaps should
+even sanity check supplied values, but it can only sanity check the
+_type_ of any references involved, since the content of the reference
+may or may not be configured at this point.
+[111:
+
+Fri Sep 14 03:52:41 2018 Now, the onums: Are they stored in the VOs
+and reused?  Originally I thought they were just generated on the fly
+during serialization, but that means successive serialized forms could
+change a lot, and kind of hinders or precludes doing incremental
+saving, if not loading.
+
+So fuck it.  Let's suppose the onums are saved and see how that feels.
+
+:111]
+
+:110]
+
+:109]
+
+:108]
+[112:
+
+Fri Sep 14 14:37:03 2018 Well, shutting Eclipse down to move the
+flag.. 
+
+:112]

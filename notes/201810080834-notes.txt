@@ -1,0 +1,106 @@
+{11}  -*- text -*- 
+[0:
+
+Mon Oct  8 08:34:52 2018 Well it's been a while no development notes
+here..  We need to fix the can't-use-^S-because onums get reused
+problem, so we can have a half-decent chance at positioning images and
+crap where we want them.
+
+So the problem apparently is, when we do ^S, we need to generate new
+onums for objects that don't have them, but the map that we're saving
+against doesn't know the existing max, so it starts handing out
+already used numbers.
+
+Then after the save is complete, the directory timestamp watcher sees
+there's a new version, and it tries to reload it, and that fails with
+a duplicate instantiation parse error.
+
+(I have to say that although it's 'inefficient', I do like that it
+immediately tries to reload what it just wrote!  Save+load should be
+idempotent, so let's just check that immediately.)
+
+[1:
+
+Mon Oct  8 08:45:34 2018 So.  What's the plan?  Walk the tree
+to find existing onums before we start the save?  (Or at least to find
+the max onum in use.)
+
+I guess the first point is we should watch what's going on during
+save.  Are we in fact starting with an empty map?
+
+[2:
+
+Mon Oct  8 08:51:35 2018 OK, yes, path is
+
+BasicSlideDeck.checkpointSave() ->
+OIOSave.save(this, map) ->
+OIOSaveTops(map)
+
+and checkpointSave() just whizzes up a new map to pass down.
+
+So let's be peephole and see if we can walk the tree to populate the
+map?
+
+[3:
+
+Mon Oct  8 08:56:08 2018 I guess it is kind of suspicious that
+basically the first thing that we do on the map is call 'endLoading()'
+on it.  We should probably replace that with like a 'buildMap()' or
+something, that walks the internal tree and then it calls
+endLoading..[4:
+
+Mon Oct  8 08:58:15 2018 Now how TF do we walk the tree, for this
+purpose, actually? [5:
+
+Mon Oct  8 09:00:55 2018 So, it's a bummer.  The walking is all tied
+up with the serialization and the writing.  Not that that's
+surprising, since it's doing all the class reflection crap to process
+@OIO annotations and so forth.
+
+But it makes us wonder if it wouldn't be easier to try to keep the
+previous map alive instead of trying to rewalk now?[6:
+
+Mon Oct  8 09:10:06 2018 So, there's an OIOLoad object held by
+OIOLoadConfiguration.  And that OIOLoad object has a mOnumMap.  Can we 
+access and reuse that?[7:
+
+Mon Oct  8 09:15:32 2018 Well, the OIOLoadConfiguration is built all
+the way up in OIOLoadDriver, which has our fogging main, so the
+potential lifetime is certainly there..[8:
+
+Mon Oct  8 09:28:39 2018 So the issue at present is BasicSlideDeck,
+doing the checkpointSave, appears to have no obvious way to get to the
+configuration object.  Do we want to add another pointer to every
+fricking VO?  (Or is there already one there and we've just forgotten
+it?) [9:
+
+Mon Oct  8 09:30:52 2018 Doesn't appear there's already one there.  Is
+it worth climbing the parent chain to get to the stage?  And asking
+the stage?  The stage has getConfiguration().
+[10:
+
+Mon Oct  8 22:15:35 2018 Well, we climbed the parents to StageVO, I
+think, and got the ^S working again.  Except that meant we had to keep
+the image data around so we could rewrite .png's and .jpg's as
+out-of-line objects.  So we did that too.
+
+:10]
+
+:9]
+
+:8]
+
+:7]
+
+:6]
+
+:5]
+
+:4]
+
+:3]
+
+:2]
+:1]
+
+:0]

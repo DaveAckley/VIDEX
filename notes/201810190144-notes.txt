@@ -1,0 +1,883 @@
+{88}  -*- text -*- 
+[0:
+
+Fri Oct 19 01:44:59 2018 OK, so we're trying to implement an image
+viewer that understands a directory of images and doesn't try to load
+all of them at once.  And hopefully we can get it to run fast enough,
+given all the VO overhead, to use it as a sort of 'time line movie
+player' to play back sections and views of these screen captures we
+started making today.
+
+Current issues are:
+
+ - Do we want to go as aggressive as a background worker thread to be
+   trying to set up the next image?  Would rather not, if we can just
+   stagger the work so we get the current image up before eating time
+   in the next updateThisVO
+
+ - Do we (don't we?) want to be collecting per-path metadata for
+   playback?  At a minimum, a Pose and some indication of whether
+   playback should auto-stop on this frame.  (Eventually will want
+   SOSI on the foggen framerate!)
+
+[1:
+
+Fri Oct 19 01:51:43 2018 Well, screw it.  No background thread, let's
+null out the unused slot and build a whole new HittableImage each
+time, etc.
+
+Let it be demonstrably too slow before we start hairing it up.
+
+[2:
+
+Fri Oct 19 02:08:42 2018 OK well, doing that, but thinking we need to
+bite the bullet earlier rather than later on the metadata capture,
+because there's some kind of new stuff in there.  In particular, I was
+imagining there'd be some kind of viewport functionality, and we could
+move and zoom and crop within that viewport.  And then the final Pose
+of each image displayed in the viewport would get captured, somehow,
+either whenever we changed it, or perhaps when we moved off the
+object, and reused whenever we next see the same path.
+
+So do we subgoal to a viewport abstraction?  It's something we've
+wanted for a while, and if we try to keep it reasonably simple (ho ho)
+it shouldn't take too long..
+
+How would it apply here?  abstract OIOViewport extends EventAwareVO.
+Has an explicit size in addition to its pose.  Overrides drawVO (not
+just drawThisVO) to establish a clipping region before continuing the
+render down to the kids.
+
+Then in the case of the ImageViewer, we'd have a _single_ kid that
+would be an OIOImage, and we'd keep changing that kid as the paging
+happens, capturing its Pose in a hash or something at ImageViewer
+level on each update.[3:
+
+Fri Oct 19 02:17:18 2018 Well, let's try it.  OIOViewport.  Then
+circle back around for ImageViewer (and TimeLinePlayer or whatever we
+call it.)
+
+:3]
+
+
+:2]
+:1]
+
+:0]
+[4:
+
+Fri Oct 19 02:33:49 2018 Noting in passing:
+
+    Load failure from /data/ackley/AV/MFM/T2sdayUpdate/episodes/12-20181023/slides:
+    /data/ackley/AV/MFM/T2sdayUpdate/episodes/12-20181023/slides/20181016023027/257.oio:1:#257: Class not found: com.putable.videx.std.vo.PNGImage
+
+..because I refactored to com.putable.videx.std.vo.image.PNGImage
+
+Just another typical moving-target data rot.  Like I escaped the
+fragility of Java's own object serialization by doing up my own giant
+OIO hack.
+
+Anyway.  At least, OIOs are all obvious text, so a keyboard macro
+should make quick work of this.[5:
+
+Fri Oct 19 02:37:29 2018 And done.  One or two minute fix max?
+
+But, handwork.
+
+OK.
+
+:5]
+
+
+:4]
+[6:
+
+Fri Oct 19 02:40:45 2018 (So trying to instantiate an abstract class
+in an .oio gets us like
+
+    Exception in thread "AWT-EventQueue-0" ...:19:#257: Not a VO
+            at com.putable.videx.core.oio.OIOValueProcessors.lambda$27(OIOValueProcessors.java:164)
+            at com.putable.videx.core.oio.OIOValue.internalize(OIOValue.java:34)
+
+but okay I can live with that for now.
+
+Main thing is we need a real subclass of ImageViewer before we can
+test this..[7:
+
+Fri Oct 19 03:11:48 2018 OK, well TimeLinePlayer exists as a stub, but
+we've now gotten far enough that we need real images to try.  So let's
+start loading our new capture directory.[8:
+
+Fri Oct 19 03:30:16 2018 Opps, never made a serializer for Path..
+Doing that.
+
+:8]
+
+:7]
+)
+
+:6]
+[9:
+
+Fri Oct 19 04:21:32 2018 OK, so we have a TimeLinePlayer playing, and
+we're not all that happy with it.  It is slow, for starters.  Even if
+we try to change images every update it feels like hardly more than
+one frame per second.  Now, we suspect part of that is supporting the
+HittableImage stuff with all the alpha processing, especially because
+these are relatively mongo images at like 5760x2160 == 12M pixels per.
+
+So can we ditch that stuff, at least for these images?   Just have the
+whole bounding box hit regardless of the alpha of the content?
+Actually, it would probably also help a lot to flat-out ditch the
+alpha in the BufferedImages, to speed up the rendering.
+
+And from a UX point of view I actually wanted to have the whole image
+hit anyway: As it is now, I have to find some sufficiently bright part
+of the image if I want to drag it around.[10:
+
+Fri Oct 19 04:47:15 2018 Well so right now a few HittableImage users
+go through .getImage(v2d) to find out what to draw, and that's where
+we may compute the special alpha hit image, under the hood, if it
+turns out we are drawing to the hit map.  But caller could certainly
+check that itself, or we could push the actual drawing into
+HittableImage, so that we don't have to develop the hitmapImage if
+some particular case would rather just be opaque.[11:
+
+Fri Oct 19 04:50:57 2018 Callers all have (very nearly) the same
+arguments to the eventual draw..  (Not sure why some start at x==1,
+though.) [12:
+
+Fri Oct 19 04:51:45 2018 And BasicSlidePNGImage, for that matter,
+already short-circuited if we're doing hitmap rendering, and we don't
+even get to the getImage there.[13: (Although it appears nobody is
+using BasicSlidePNGImage dur.)  :13]
+
+:12]
+
+:11]
+
+:10]
+
+:9]
+[14:
+
+Fri Oct 19 05:15:42 2018 Well, with ImageViewer delegating to
+HittableImage for drawing, things seem a little faster.. oh, wait.
+Did we set the new alphahittable thing doh?![15:
+
+Fri Oct 19 05:17:28 2018 a HAH!  Now it's WICKED FAST!  Relatively
+speaking -- I'd say at least 3 fps, maybe 4.  Let's actually slow it
+down a touch.[16:
+
+Fri Oct 19 05:45:40 2018 OK, so well that's all pretty reasonable, as
+far as it goes.  Arguably it would be better to be doing undercranked
+screengrab video at like 1fps or something, rather than individual
+pngs at 1/minute, but I messed with that earlier and it seemed ffmpeg
+wasn't producing reliable output when I was whipping around changing
+desktops and things.  Slow video would allow more continuity close in
+when something 'interesting' was happening, and we'd speed it up
+otherwise.
+
+But I'm going with this as is, for now.  Could certainly accelerate
+the PNG grab rate, but we've already burned half a GB just playing
+with pngs today, so we don't want to go too crazy.
+
+I also should have bought more RAM for nubig.  I was stingy at 16GB.
+I was dumb.
+
+Anyway.  Taking a break.  When we return, make a metadata mechanism so
+we can
+
+ - change poses on image,
+ - place 'auto stop flags' on certain frames,
+ - suppress certain frames from appearing at all
+
+and do some filename processing so we could regenerate a timestamp to
+put on each frame if we want.
+
+We also want a woback-style speed controller on the arrows.  From
+stopped, single arrow does single frame either direction, and sets a
+timer for like a second or a half second.  Second arrow in same
+direction within the timer starts autoplay in that direction at slow
+speed.  Additional arrows in same direction increments speed
+additively, arrows in reverse direction decrements speed
+muliplicatively until stopped.  (Auto stop flags.. hmm, I wonder if
+they might be directional..  Auto stop here going forward but not
+backward?  Nah not right out of the gate.)
+
+But first a break.[17:
+
+Fri Oct 19 10:43:21 2018 Let's separate the directory from the path to
+play.. [18:
+
+Fri Oct 19 11:37:38 2018 OK we made ReadOnlyDirectoryManager, but
+we're unsure how we want to share it among multiple TimeLinePlayers or
+other users.  I guess I'm thinking we make it an OIO, with the
+directory path persistent but not the directory contents.  Then who
+owns it, though?  I guess it could be a sibling to the BasicSlideDeck
+way up top..  Would it have screen representation?  Certainly could
+see it presenting options (like reload for starters) that way.
+
+OK, let's go that way.  We'll make it @OIOTop, and try one as sibling
+to the deck, and let TimeLinePlayer (etc) refer to it as non-owners.
+
+But first, blunch.[19:
+
+Fri Oct 19 12:02:50 2018 OK trying for that.  First issue is that big
+pig interface VO takes up the Iterable slot as Iterable<VO>, so we
+can't have ReadOnlyDirectoryManager's iterator() return a
+ListIterator<Path>.  So I guess we just go with a separate method for
+it.. like getListIterator()..[20:
+
+Fri Oct 19 12:06:55 2018 Do we want it to boot itself during
+updateThisVO?  If not then, when?  But if then, what happens when
+clients run before it does and take iterators that will get blown?
+
+Maybe we don't want to hand out real iterators?  Use indices instead?
+Or have some kind of iteratorBlown predicate to call to find out if
+clients need to take another one?
+
+Gut instinct says we want the thing to self-stabilize all the way up
+the stack, so clients should check if their iterator is valid, and if
+not, should check if they can get one that is, before they start using
+it.
+
+Grr.  Make our own iterator to hand out, with an int and a generation
+number or timestamp?  Grrr.  [21:
+
+Fri Oct 19 12:39:12 2018 OK grr did that.  And made PNGImageDirectory
+under ReadOnlyDirectoryManager, and moved the latter from utils to
+std.vo since it is one, again.  Now the issue is at the moment the
+root of our oioloadable tree actually IS the slide deck.  I don't see
+any way to give it a sibling without redoing the top.  Who actually
+reads and uses the 0 file, again? [22:
+
+Fri Oct 19 12:42:54 2018 It determines what OIOLoad.load()
+  returns.. [23:
+
+Fri Oct 19 12:44:08 2018 Well, I guess if we want to try a sibling to
+the deck we're going to have to change the root..  To what, exactly?
+A VO, a StandardVO, an EventAwareVO?  Well, it needs to be an
+OIOAble; where does that start?  ..It starts at VO doh.  Well, let's
+try making it a VO then. ..except VO is an interface you
+norg.. ..aaand StandardVO and EventAwareVO are both abstract.  Get
+with the program here, Chumley.  How about a BlackBackground?  That
+has the virtue of being relatively simple.  I think we'd want to go
+back and turn off its mouse awareness, so we wouldn't accidentally be
+dragging around the entire universe.[24:
+
+Fri Oct 19 12:53:29 2018 OK, well, that 'worked'.. except the
+BlackBackground appears to be grey..  But indeed it appears I can't
+mouse the grey around, so that's good..[25:
+
+Fri Oct 19 12:59:48 2018 Ah, and the grey wasn't BlackBackground's
+fault (except for it being poorly named[27: Renamed to
+'FlatBackground' [28: Fri Oct 19 13:25:53 2018 Which we then had to
+remember to rename in the .oio.. I wonder if we could add like a list
+of Strings holding previous class names to @OIOTop.. and allow it to
+accept the previous names as aliases on loading..  Or extend the 0
+file to include the save time, and include dates of class renamings so
+we would only accept them in their proper vintages..  Geez enough man
+get going.:28]:27]).  Indeed I'd set its background to grey in its
+.oio.[26:
+
+Fri Oct 19 13:00:40 2018 OK.  So we appear to have a BlackBackground
+inserted above the slide deck.  Now we need to make a
+PNGImageDirectoryManager and see how that goes.
+
+:26]
+
+:25]
+
+:24]
+
+:23]
+
+:22]
+
+:21]
+
+:20]
+
+:19]
+
+:18]
+
+:17]
+
+:16]
+
+:15]
+
+:14]
+[29:
+
+Fri Oct 19 13:36:28 2018 OK and whoops, slight problem with siblings
+for the slide deck -- the ^S logic is associated with the deck, so the
+siblings get (cleanly) lost on ^S.
+
+But ^S is clearly a more fundamental concept than is a slide deck, so
+we want to lift that to the StageVO or something.  Let's get after
+that then circle back around here.[30:
+
+Fri Oct 19 13:48:03 2018 Maybe we lift it to StagePanel.  That's
+really the place to get above the root of the VO tree.  I guess that
+means lifting on-demand reloading up that high as well?  Don't like
+that amount of 'root creep' though.  Can we push both to StageVO
+really? [31:
+
+Fri Oct 19 13:55:22 2018 Well, or go the other way.
+OIOLoadConfiguration is the place where we check for on-demand oio
+reloading, so you could certainly argue that's where on-call oio
+saving should go too..[32:
+
+Fri Oct 19 14:49:06 2018 OK, so the problem at the moment is that
+StageVO has no onum.  But I'm not sure if that's inherent in the
+current structure or just because I'm using a hacked-over oio dir..
+[33:
+
+Fri Oct 19 15:05:56 2018 OK, there's a problem saving the StageVO,
+because it doesn't have a default ctor so we can't rebuild it during
+load.  It's expecting to be passed the world to stash in a final
+field.. [34:
+
+Fri Oct 19 15:18:57 2018 Not sure what we want to do about this.
+Certainly seems arguable that StageVO does not want to be persisted at
+all, and we should push ^S handling lower in the tree.
+
+It might not be that bad to have save and load handled at slightly
+different levels, since even to have a world we _have_ to have at
+least one load, but we can if we wish get away with zero saves -- so
+loading is more fundamental and can defensibly go higher in the tree
+and be more special-cased.[35:
+
+Fri Oct 19 15:38:41 2018 But, urgh, running out of steam for a while.
+And it's almost time to start cooking.  So let's leave some notes here
+to pick up on:
+
+ - DAMN VIZZEN IS EATING TOO MUCH TIME AGAIN!
+
+ - [43: DONE: TreeSaverVO  :43]Create some empty invisible holder to be the 'checkpoint save
+   lasso', and have that be the immediate child of the StageVO.  Call
+   it....  SaveVO?  CheckpointVO?  SelfieVO?  DunnoVO.
+
+ - Get that working fast, then focus on the image metadata design,
+   because we can't use any of this until we can select which images
+   to show and how.
+
+ - We also still need the ViewportVO.  Actually, could we take a quick
+   standalone cut at that now, just to see some issues we might want
+   to be chewing over while cooking?  [36: Fri Oct 19 15:44:59 2018
+   Well, we had already started OIOViewport.  Question is how to
+   implement its drawing.  I think we should have a second VO ref,
+   unowned, that defines what the viewport is displaying.  Any direct
+   kids of the viewport would be like controls and viewport
+   decorations or whatever, but they would be treated normally, not
+   like the (cropped) content of the viewport itself.[37:
+
+Fri Oct 19 16:13:52 2018 OK need to stop now, but current viewport
+issue appears to be that the viewedVO isn't getting remapped to the
+viewport position.  I think, because we compute the unrolled position
+of everything during transformVO, even if we change the g2d transform
+before calling viewedVO.drawVO(v2d), it doesn't make any difference
+because StageGraphics2D.renderVOTo(..) is just going to do:
+
+        g2d.setTransform(vo.getVOCToPixelTransform(null));
+
+which completely ignores both the current g2d transform, and the
+positions of whatever caused us to get drawn.[38:
+
+Fri Oct 19 16:20:24 2018 So if we want to have the viewport work this
+way -- as opposed to just clipping its actual children and not being a
+view onto something that's already being rendered elsewhere, then we'd
+have to think of a way to modify or augment the
+StandardVO.mVOCToPixelAT on the fly during rendering.
+
+Maybe it's better just to clip the kids.  That ought to pretty much
+just work, and be enough for the time line player.
+
+But all for now.  Cook.
+[39:
+
+Fri Oct 19 23:54:00 2018 OK.  Let's clip the kids, make a viewport
+subclass that acts like the time line player, and MOVE THE FOG ON.
+
+:39]
+:38]
+  
+
+:37] :36]
+
+:35]
+
+:34]
+
+:33]
+
+:32]
+
+:31]
+
+:30]
+
+:29]
+[40:
+
+Sat Oct 20 00:11:45 2018 OK, TreeSaverVO is getting close.  Right now
+we have to decide what to do about subdir naming.  We're calling it
+'slides/' at the moment but we're moving beyond that abstraction.  So,
+call it 'saves/'?  Good enough for now. [42: OK that's working.  :42][41:
+
+Sat Oct 20 00:17:57 2018 (Not sure what BasicSlideDeck.mOIOPath is
+about?  Is it live?)
+
+:41]
+
+:40]
+[44:
+
+Sat Oct 20 00:46:27 2018 OK debugging OIOViewport.  Problem now is
+that we have two Graphics2Ds in play, depending on whether we're
+rendering to the screen or to the hitmap.  But when OIOViewport calls
+v2d.getGraphics and then does g2d.setClip on the result, that only
+modifies one of those g2ds.
+
+So, do we present setClip/getClip at the v2d level?
+
+So the bigger context is that even though we draw twice, we enter
+drawVO only once, and the doubled drawing happens in v2d.renderVO.
+And as we draw the kids below us, that doubled drawing is going to be
+happening outside our control.  So we have to get our intended clip
+into both g2ds.
+
+So be it.
+[45:
+
+Sat Oct 20 00:55:31 2018 We could have a 'hero' g2d that v2d provides
+access to, which could be defined to determine some properties of the
+drawing to occur, like say oh the clip.  Then we'd take such
+properties off the hero when we were about to dispatch to renderVO,
+and reset them afterwards?[46:
+
+Sat Oct 20 01:05:53 2018 Is a hero g2d that bad?  The hero tile design
+in the mfm works reasonably well.  Although in that case we have an
+indefinite number of tiles to init, while here we have.. two.. g2ds,
+and that only because of the hitmap hack.
+
+Hmmmmm.
+
+:46]
+
+It's just that the VOGraphics2D interface is pretty narrow at the
+moment.  Adding setClip/getClip would be pretty gross.
+
+:45]
+:44]
+[47:
+
+Sat Oct 20 01:35:04 2018 So, cleaning.  Let's not forget about
+ReadOnlyDirectoryManager, which is I think mostly implemented but
+still unused?  At least, TimeLinePlayer still appears to be loading
+the directory itself.  So if we have aspirations for having multiple
+TimeLinePlayers in one world, that's going to be a bit expensive.[48:
+
+Sat Oct 20 01:37:58 2018 Still not happy with our options for
+clipping.. [49:
+
+Sat Oct 20 02:32:32 2018 Well, so did an hour on youtube comments.
+
+But we have to get off the dime here.  What are our options?
+
+ - Repurpose VOGraphics2D.getGraphics2D to return a reference to a
+   hero g2d, and try to rehack all the framework below that.  Bleh.
+
+ - Make a new VOGraphics2D.getHeroGraphics2D, and still have to rehack
+   all the framework below that.  Bleh.
+
+ - Associate a(n optional) clip with each VO, like we're doing with
+   foreground and background colors, and rehack all the framework
+   below to deal with that.  Bleh.. but maybe.  At least, it's
+   throwing our garbage down on that existing pile of garbage rather
+   than, as Arlo said, trying to bring that one up..[50:
+
+Sat Oct 20 02:46:48 2018 Well okay so going this route.  Noting that
+since at present we are using a general Shape for the clip, and the
+clip certainly needs to be persistent, that means 'rehack all the
+framework' includes OIOValueProcessors for whatever subclasses of
+Shape we intend to support..[51:
+
+Sat Oct 20 02:57:31 2018 Well, so the first cut of that is roughed
+in.  Time to try it in OIOViewport, I guess.. ..Actually let's make at
+least a rectangle Shape OIOValueProcessor first, shall we?
+
+:51] 
+
+:50]
+
+:49]
+
+:48]
+
+:47]
+[52:
+
+Sat Oct 20 03:28:43 2018 Now the question is do we want to shadow the
+clip with our own rectangle in OIOViewport, or try to punch through to
+the actual clip in all our manipulations.  Problem with punching
+through is the actual clip might not be a Rectangle so we'd have to
+screw with that.  Problem with shadowing is when do we push down
+changes in the shadow?  Can't do it in (e.g.,) setSize because the
+reflection ctor in OIOLoad won't be calling it.
+
+So we knew the answer before we got here: Be self-stabilizing, push it
+down in updateVO..
+[53:
+
+Sat Oct 20 03:36:02 2018 OK so but the VO clip is different than the
+VO foreground and background because we have to leave it in place
+while we're drawing the kids.  But the current approach -- setting it
+and resetting the clip around the calls to drawThisVO -- doesn't do
+that.  The VO clip is in effect a drawVO level constraint -- because
+we need the clip regions to intersect as we go down -- rather than a
+drawThisVO constraint like the colors, which just completely replace
+each other.. [54:
+
+Sat Oct 20 03:41:04 2018 Maybe add startVORender and finishVORender to
+VOGraphics2D?  Would that do it?  StandardVO.drawVO would in
+particular delay calling finishVORender until after the kids were
+done.  But how does StageGraphics2D implement it?  Can it just apply
+the clip to both g2ds?  Remembering both old ones?
+
+Well let's give it a try.[55:
+
+Sat Oct 20 04:20:26 2018 Still struggling to get the damn clip to get
+picked up where and when it's supposed to.  But also starting to
+wonder if, urgh, we're going to need to push the clip through the
+current transform before setting it?  Is the clipping region always in
+device coordinates or is it subject to the current transform??
+
+[56:
+
+Sat Oct 20 04:31:11 2018 OK, well, finally some progress: We're seeing
+the TimeLinePlayer clipped inside an OIOViewport.  Now at the moment
+I'm having trouble interacting with the viewport as opposed to the
+TimeLinePlayer -- we need a real border for the viewport so we'll have
+something to grab..
+
+But, finally![57:
+
+Sat Oct 20 04:43:05 2018 So, yes, we are applying our clip before
+drawThisVO, so we can't have our clip apply to just our children,
+which is what we want for a decorated OIOViewport.[58:
+
+Sat Oct 20 04:45:30 2018 Aand if we change that to apply our clip to
+just our children and not ourselves, we see the fundamental problem
+that, yes, it appears the clip is in device coordinates, so we're
+going to have to pump it through our transform before we set it..[59:
+
+Sat Oct 20 04:56:32 2018 Well cool!  OIOViewport is clipping a
+TimeLinePlayer and I just sat and watched my like last day and a half
+of activity.  Lots still needed before t2sday, but cool cool!
+
+:59]
+
+:58]
+
+:57]
+
+:56]
+
+:55]
+
+:54]
+
+:53]
+:52]
+[60:
+
+Sat Oct 20 05:31:10 2018 Well, let's commit and push some of this,
+then think about what's next for the day.
+
+:60]
+[61:
+
+Sat Oct 20 06:36:44 2018 OK so well that was a whole hour off.  Hrm.
+
+TODO
+
+ - TimeLinePlayer kbd commands
+
+ - TimeLinePlayer (or somebody) pose changes.  Hmm could we have them
+   be sticky?  So you can set up one and it will apply to the next
+   run?  But then how does reverse work?  Would need to be applying
+   them to ranges, but that seems like a bit of a pain to set up.
+   Well for now suppose we just say when you leave an image the
+   current pose gets attached to it?  We'll see; let's just get some
+   kbd stuff going and it'll be clearer
+
+ - TimeLinePlayer suppress images.
+
+ - [62: Sat Oct 20 07:12:25 2018 DONE.  (At least one TimeLinePlayer..) 
+:62]Multiple TimeLinePlayers feeding off the same image directory.  I
+   guess we need to deal with that first.
+   
+
+:61]
+[63:
+
+Sat Oct 20 23:42:22 2018 Want to do up some zoom-out guys for the
+intro.  Need to get cracking there.[64:
+
+Sun Oct 21 00:22:20 2018 OK, forty minutes in (man, TIME_SHOOTER
+really makes me pay attention to the foggen clock), and now we need to
+decide on some approach to 'triggering the next guy' in a zoom-out
+sequence.  We'd been imagining its some kind of special event, but how
+do we find the guy to deliver it to?  Having us navigate to it by hand
+-- iterate over our mount's siblings to find one that's downstream of
+us and also has a zoom out rider on it?  Bah-arrf?
+
+Well hell come on for all my stabilizing wishes this is still
+hollywood, we can just hold a non-owned ref to the next mount in the
+sequence.. or even the zoom-out rider attached to the next mount in
+the sequence.  And if we do that we can just call a foggen method and
+be done with it.
+
+That's a commitment to ZoomOutRider playing only with its own kind,
+which is sad.. but it could be sadder in that the whole rider-vs-mount
+concept already gives us a lot of decoupling.  We can have a sequence
+of zooming out mounts made up of bowling balls, microwave ovens, etc,
+and "it'll all work".
+
+So be it.[65:
+
+Sun Oct 21 00:43:30 2018 Developing..  Noting: At some point we should
+declare some conventional semantics over riders and make it easy to
+use.  In particular, the stuff in TogglePresentationRider that allows
+activating and deactivating the rider is quite helpful -- deactivate
+it, pose its mount as you like, capture the pose as the 'presented' or
+'stashed' position, then reactivate, and it snaps to your new
+position.  And then ^S persists it all.
+
+So I'd like ZoomOutRider to have that as well.  I'm willing to
+hand-edit .oio's for timing and stuff, but not for the poses.. [66:
+
+Sun Oct 21 00:54:45 2018 OK we're, what, an hour and twelve minutes
+in, and it's time to try zoom out rider.  Need to make some..  [67:
+
+Sun Oct 21 01:35:11 2018 OK we have a cut at a chain of zoom out
+riders working.  We're using last week's questions because those are
+the images we had around!  But now we need invisible/visible.  I guess
+the first question is: If we disable the mount, will the rider get
+called?  And we suspect the answer is no..  Let's see.[68:
+
+Sun Oct 21 01:39:39 2018 Wow, um, disable/enable seemed to totally
+work the first time?
+
+Yay?
+
+Well, just one small hitch: Now everything's invisible, so I have no
+way to trigger it again..  [69:
+
+Sun Oct 21 02:05:04 2018 Well, just wasted N minutes thinking I had a
+bug because the zoom-outs did not appear to be overlapping, but
+actually they were except like half of the images were in a different 
+slide so I didn't see them.
+
+So.  Getting close to need authoring capabilities for this stuff.  Or
+a bit more authoring capabilities.  Also need a way to trigger a whole
+sequence from a slide containing the sequence..[70:
+
+Sun Oct 21 02:21:20 2018 Suppose we put a bit more structure on the
+riders now?  It would make sense to have a common 'trigger' command --
+like 'R' -- that we could put on a BasicSlide, and have that..
+
+..wait, as long as the slide is visible wouldn't an 'R' kbd hit
+propagate to any (hmm, kid's) riders anyway?  [72:
+
+Sun Oct 21 02:43:04 2018 Well, yes and no.  The 'R' does get to, say,
+ZoomOutRider.handleKeyboardEvent(..), but that then doesn't consume
+it, because the rider's mount isn't the mouse target.  And if we said
+don't bother checking that, then we're at the mercy of the VO tree
+enumeration order for determining which (in our case) PNGImage's rider
+(in which slide, etc) first encounters the 'R'.
+
+[73:
+
+Sun Oct 21 02:52:56 2018 How do we use special events at present?  We
+used them for something, right?[74:
+
+Sun Oct 21 02:54:27 2018 EditableTextLine has an explicit mCallbackVO
+that it directly (atomically) calls handleSpecialEvent on.  What'd
+we'd sort of like, here, is a way to propagate a special event to our
+kids only, or to our riders only, or whatever, while:
+
+(1) Avoiding full propagation from the top and
+(2) Avoiding reinventing propagation code.
+
+So what do we have for that?
+
+[75:
+
+Sun Oct 21 02:59:26 2018 Well, StageVO propagates kbd events but not,
+currently, special events.  [76: And StageVO does that, itself,
+because it's only a StandardVO, not an EventAwareVO.  EventAwareVO
+also propagates kbd events, but it currently horks on special events.
+Which does kind of force caller to deliver a special event directly to
+whoever's ready to take it. [77:
+
+Sun Oct 21 03:09:55 2018 So.  What do we want to do about that?  Well,
+is it so bad to have EventAwareVO propagate special events down?  Why
+don't we just do that?  We'll need some kind of equals or instanceof
+interlock on special event receivers anyway, so...[78:
+
+Sun Oct 21 03:32:26 2018 Alright, so we think we're propagating
+special events, below the level of StageVO.  We made the handle..() vs
+handle..Here() distinction that the kbd has because separating
+propagation from performance has felt worthy there.
+
+So now how do we use this?  On 'R', BasicSlide is going to propagate
+some special 'Run' event to.. itself? ..in case anybody wants it?  And
+how are we going to identify these special events?  What is our one
+current case doing?[79:
+
+Sun Oct 21 03:36:01 2018 EditableTextLine has a nested class extending
+SpecialEventInfo, and PopupTextLineEntry.handleSpecialEvent uses
+instanceof to detect that type.
+
+So the obvious option is start collecting a set of 'generic' special
+events, like GenericRunSpecialEvent, in some new package probably, and
+then start using them via instanceof.[80:
+
+Sun Oct 21 03:55:57 2018 OK, so did some of that, and now we can
+trigger a zoom out sequence using 'R' on a BasicSlide that contains
+one.  But it's not robust, because the RunGenericSpecialEventInfo gets
+picked up by the first appropriately-mounted child of the slide -- but
+the zoom out sequence itself messes with the sibling order.
+
+We need some 'start' flag we can put on a zoom out rider, and have it
+be the one that accepts the run event.
+
+:80]
+
+:79]
+
+:78]
+
+:77]:76]
+
+:75]
+
+:74]
+
+:73]
+
+:72][71:
+
+Sun Oct 21 02:29:02 2018 Well, not clear, but I just did a nice thing:
+@OIO now can have obsolete=true, which causes that field to no longer
+be saved.  So eventually, even if we start with ancient .oios
+containing all sorts of crap, if we load and ^S them, their obsolete
+fields will be gone.  With the initial goal of course of getting rid
+of that early early zombie abomination I made:
+
+    #13:com.putable.videx.std.vo.Slides.BasicSlide {
+  ..
+        mListOfNumbersDeleteMeXXX: []
+  ..
+
+because we now have:
+
+    @OIO(obsolete=true)
+        private LinkedList<Integer> mListOfNumbersDeleteMeXXX = new LinkedList<Integer>();
+
+So, that makes me happy.
+
+But, kbd propagation to riders?  How does it go?
+
+:71]
+
+:70]
+
+:69]
+
+:68]
+
+:67]
+
+:66]
+
+
+:65]
+
+:64]
+
+:63]
+[81:
+
+Sun Oct 21 04:58:47 2018 OK, so zoom out rider is seeming plausible
+enough.  Over four foggen hours to get there, though.  And we still
+need some kind of authoring help.  But let's commit first.[82:
+
+Sun Oct 21 05:12:44 2018 OK, committed most of that.
+
+Now, what's the least authoring we could get away with?
+
+Well, right now we have BasicSlide adding images on 'I', but we're
+automatically putting a TogglePresentation rider on it when the image
+is made.  Suppose we add a zoom rider instead with 'Z'?  How can we
+select one to be the sequence leader?
+
+We should make a quick 'popup notification' thing that posts a label
+with a rider that kills its mount and itself after a little while.
+Then authoring-type stuff would have a way of confirming changes.[83:
+
+Sun Oct 21 06:04:23 2018 OK we made TimedNotification.  Use it like:
+
+  TimedNotification.postOn(veh, "RiderActive: "+this.mRiderActive);
+
+or whatever.
+
+But we still need a way to present disabled children, so we can adjust
+them.  I guess, that seems basic enough that maybe we should put
+something on basicslide to enable its kids?  Perhaps 'E'?
+
+:83]
+
+:82]
+
+:81]
+[84:
+
+Sun Oct 21 06:49:18 2018 OK, well, the commands are getting crocky and
+confusing, just like they did way back in the original vizstuff..  but
+forget it jake its hollywood.  Eventually we'll build some more proper
+command abstractions, so the canonical command set to memorize will
+start with 'H' or something to pop up a command menu for the mouse
+target..  But not now, we're way overdue to stop screwing around tool
+building and get back to more overtly 'forward progress'.
+
+And, we basically have enough infrast now to start trying to author an
+intro sequence.
+
+SO LET'S FOGGEN DO THAT RIGHT NOW.
+
+:84]
+[85:
+
+Sun Oct 21 07:14:50 2018 But apparently we did not yet do the 'Z'
+disgusting hack to create a zoom-out image from a BasicSlide...[86:
+
+Sun Oct 21 07:46:10 2018 Pulled CallbackVO out of PopupTextLineEntry
+to start systematizing that stuff.  Had one bug that we now need to
+callback via handleSpecialEventHere(..) to avoid stack overflow doh.
+
+[87:
+
+Sun Oct 21 07:47:53 2018 So.  Where are our candidate zoom-out images?
+
+../data/ackley/AV/MFM/T2sdayUpdate/Intro/images/
+
+:87]
+
+:86]
+:85]
