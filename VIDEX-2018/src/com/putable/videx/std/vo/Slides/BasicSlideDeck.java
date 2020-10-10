@@ -28,6 +28,11 @@ import com.putable.videx.std.riders.SOSIPoseRider;
 
 @OIOTop
 public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
+    /**
+     * The root of the notes tree associated with this deck, if any
+     */
+    @OIO(owned = false)
+    private VO mNotesRoot = null;
 
     private HTMLEditorKit mKit = new HTMLEditorKit();
 

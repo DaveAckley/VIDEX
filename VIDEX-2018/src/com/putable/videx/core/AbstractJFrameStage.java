@@ -1,8 +1,11 @@
 package com.putable.videx.core;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.GridLayout;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.KeyAdapter;
@@ -13,6 +16,7 @@ import java.awt.image.BufferedImage;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.event.MouseInputAdapter;
 
 import com.putable.videx.interfaces.Configuration;
@@ -26,12 +30,12 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
     private final Configuration mConfig;
     private final World mWorld;
     private final Hitmap mHitmap;
-    private final JFrame mPrivateFrame;
+    //private final JFrame mPrivateFrame;
     
     public Configuration getConfiguration() { return mConfig; }
 
     @Override
-    public JFrame getPresenterFrameIfAny() { return mPrivateFrame; }
+    public JFrame getPresenterFrameIfAny() { return null/*mPrivateFrame*/; }
     
     @Override
     public World getWorld() { return mWorld; }
@@ -41,11 +45,14 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
 
     @Override
     public SXRandom getRandom() { return mWorld.getRandom(); }
+
+    public StagePanel getStagePanel() { return mStagePanel; }
     
     private void initGraphicsDevice() {
         mGraphicsDevice = GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getDefaultScreenDevice();
-        if (mGraphicsDevice.isFullScreenSupported()) { // Go for full-screen mode
+        if (this.mConfig.wantFullScreen() &&
+                mGraphicsDevice.isFullScreenSupported()) { // Go for full-screen mode
             this.setUndecorated(true);         // Don't show title and border
             //this.setResizable(false);
             //this.setIgnoreRepaint(true);     // Ignore OS re-paint request
@@ -62,7 +69,7 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
                 new Point(),
                 "NoCursor" ) );
         
-        mStagePanel = new StagePanel(this.mHitmap, this.getRoot(), this.getWidth(), this.getHeight());
+        mStagePanel = new StagePanel(this.mHitmap, this, this.getWidth(), this.getHeight());
         this.setContentPane(mStagePanel); // Set as content pane for this JFrame
     
         // To handle key events
@@ -165,19 +172,40 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
         initGraphicsDevice();
     }
 
+    /*
     JFrame initPrivateFrame() {
         JFrame ret = new JFrame();
-        JLabel label = new JLabel("<HTML><h1>HEWO</h1><p>ZONg <i>bgneid</i> dongngog</p>");
-        ret.add(label);
+        ret.setBackground(Color.black);
+        ret.setForeground(Color.white);
+        ret.setPreferredSize(new Dimension(1280,682));
+        JPanel panel = new MirrorPanel(new BorderLayout());
+        ret.add(panel,BorderLayout.CENTER);
+
+        String sample = "<HTML>";
+        sample += "<p>alife is blife</p>";
+        sample += "<p>LCFN <i>record</i> for foo and bar</p>";
+        sample += "<p>Power zones: Easy to be hard</p>";
+        sample += "<p>Next steps: Zip zang ZONG and the CLAMINATOR!</p>";
+        sample += "<p>HOW LONG IS TOO LONG?</p>";
+        sample += "<p>Inquiring minds want to NO!</p>";
+        sample += "<p>This is a pretty reasonable amount of text</p>";
+        sample += "<p>We should pretend to present it and see how it looks</p>";
+        JLabel label = new JLabel(sample);
+        label.setBackground(Color.black);
+        label.setForeground(Color.white);
+        label.setOpaque(true);
+        
+        panel.add(label);
         ret.pack();
         ret.setVisible(true);
         return ret;
     }
+    */
     public AbstractJFrameStage(World world, Configuration config) {
         this.mWorld= world;
         this.mConfig = config;
         this.mHitmap = new Hitmap(mWorld.getRandom());
-        this.mPrivateFrame = initPrivateFrame();
+        //this.mPrivateFrame = initPrivateFrame();
     }
 
 

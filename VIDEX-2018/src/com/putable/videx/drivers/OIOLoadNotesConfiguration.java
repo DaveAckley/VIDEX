@@ -1,10 +1,12 @@
 package com.putable.videx.drivers;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
 import com.putable.videx.core.AbstractConfiguration;
 import com.putable.videx.core.AbstractJFrameStage;
+import com.putable.videx.core.StagePanel;
 import com.putable.videx.core.StandardWorld;
 import com.putable.videx.core.oio.OIOException;
 import com.putable.videx.core.oio.save.OIOLoad;
@@ -15,30 +17,30 @@ import com.putable.videx.interfaces.VO;
 import com.putable.videx.interfaces.World;
 import com.putable.videx.std.vo.StageVO;
 
-public class OIOLoadConfiguration extends AbstractConfiguration {
+public class OIOLoadNotesConfiguration extends AbstractConfiguration {
     private final OIOLoad mLoader;
 
     public OIOLoad getLoader() {
         return mLoader;
     }
     
-    public OIOLoadConfiguration(OIOLoad oio) {
+    public OIOLoadNotesConfiguration(OIOLoad oio) {
         if (oio==null) throw new IllegalArgumentException();
         mLoader = oio;
     }
-    private static class OIOLoadWorld extends StandardWorld {
-        public OIOLoadWorld(OIOLoadConfiguration conf) { 
+    
+    private static class OIONotesWorld extends StandardWorld {
+        public OIONotesWorld(OIOLoadNotesConfiguration conf) { 
             super(conf);
-            Stage s = new OIOLoadStage(this,conf);
+            Stage s = new OIONotesStage(this,conf);
             s.initStage();
             this.addStage(s);
         }
     }
-
-    private static class OIOLoadStage extends AbstractJFrameStage {
-        private final OIOLoadConfiguration mConfig;
+    private static class OIONotesStage extends AbstractJFrameStage {
+        private final OIOLoadNotesConfiguration mConfig;
         public VO mLoadedRoot = null;
-
+        
         private boolean reloadIfNeeded() {
             try {
                 return reloadIfNeededInternal();
@@ -63,11 +65,11 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
             return true;
         }
 
-        public OIOLoadConfiguration getConfiguration() {
+        public OIOLoadNotesConfiguration getConfiguration() {
             return mConfig;
         }
         
-        public OIOLoadStage(World world, OIOLoadConfiguration config) {
+        public OIONotesStage(World world, OIOLoadNotesConfiguration config) {
             super(world, config);
             mConfig = config;
             mRoot = new StageVO(world);
@@ -76,14 +78,19 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
         private static final long serialVersionUID = 1L;
 
         private StageVO mRoot;
-        
+
         @Override
-        public Stage.Purpose getPurpose() { return Stage.Purpose.MAIN_SCREEN; }
+        public Stage.Purpose getPurpose() { return Stage.Purpose.PRESENTER_SCREEN; }
 
         @Override
         public void updateStage(World world) {
-            if (!reloadIfNeeded())
+            if (!reloadIfNeeded()) {
+                StagePanel sp = this.getStagePanel();
+                if (sp != null)
+                    sp.setPanelScale(new Point2D.Double(-1,1));
+
                 mRoot.updateVO(this);
+            }
         }
 
         
@@ -102,15 +109,16 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
             throw new UnsupportedOperationException("NOT CALLED RITE");
         }
     }
-
+    
     @Override
     public World buildWorld(Configuration config) {
-        return new OIOLoadWorld(this);
+        throw new IllegalStateException();
+        //return new OIOLoadWorld(this);
     }
 
     @Override
     public World buildNotesWorld(Configuration config) {
-        throw new IllegalStateException();
+        return new OIONotesWorld(this);
     }
 
     @Override
@@ -120,14 +128,14 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
 
     @Override
     public int getFPS() {
-        return 30;
+        return 10;
     }
 
     public static final Class<?> MY_CLASS = MethodHandles.lookup().lookupClass();
 
     @Override
     public boolean wantFullScreen() {
-        return true;
+        return false;
     }
 
         

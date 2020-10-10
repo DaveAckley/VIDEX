@@ -8,8 +8,10 @@ import com.putable.videx.interfaces.World;
 public class OIOLoadDriver2020 {
     private static final long serialVersionUID = 1L;
     private Configuration mConfiguration;
+    private Configuration mNotesConfiguration;
 
     private World mWorld;
+    private World mNotesWorld;
 
     private static void die(String msg) {
         System.err.println(msg);
@@ -21,11 +23,23 @@ public class OIOLoadDriver2020 {
         String basedir = args[0];
         GlobalOnumMap omap = new GlobalOnumMap();
         OIOLoad oio = new OIOLoad(basedir, omap);
+        OIOLoad oioNotes = new OIOLoad(basedir, omap);
         try {    
             mConfiguration = new OIOLoadConfiguration(oio);
+            mNotesConfiguration = new OIOLoadNotesConfiguration(oioNotes);
             mWorld = mConfiguration.buildWorld(mConfiguration);
             if (mWorld==null)
                 throw new Exception("World construction failed");
+            mNotesWorld = mNotesConfiguration.buildNotesWorld(mNotesConfiguration);
+            new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    mNotesWorld.runWorld();
+                }
+                
+            }).start();
+
             mWorld.runWorld();
         } 
         catch (Exception e) {

@@ -15,6 +15,12 @@ public class StandardSlideDeckConfiguration extends AbstractConfiguration {
     }
 
     @Override
+    public World buildNotesWorld(Configuration config) {
+        throw new RuntimeException("UNIMPLEMENTED XXX");
+        //return new StandardSlideDeckWorld(config);
+    }
+
+    @Override
     public String getTitle() {
         return MY_CLASS.getName();
     }
@@ -28,5 +34,10 @@ public class StandardSlideDeckConfiguration extends AbstractConfiguration {
     
     public static void main(String[] s) {
             CompilerDriver.main(new String[] { s[0], MY_CLASS.getName() });
+    }
+
+    @Override
+    public boolean wantFullScreen() {
+        return true;
     }
 }

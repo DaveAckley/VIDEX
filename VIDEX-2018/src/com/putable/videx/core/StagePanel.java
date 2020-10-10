@@ -12,6 +12,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.Iterator;
@@ -20,6 +21,7 @@ import javax.swing.JPanel;
 
 import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.events.MouseEventInfo;
+import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
 import com.putable.videx.interfaces.World;
 import com.putable.videx.std.vo.StageVO;
@@ -29,6 +31,13 @@ public class StagePanel extends JPanel {
     private StageVO mRoot;
     private int mCanvasWidth;
     private int mCanvasHeight;
+    private Point2D mPanelScale = new Point2D.Double(1,1);
+    public Point2D getPanelScale() { 
+        return new Point2D.Double(mPanelScale.getX(), mPanelScale.getY());
+    }
+    public void setPanelScale(Point2D pt) { 
+        mPanelScale = new Point2D.Double(pt.getX(), pt.getY()); 
+    }
     private StageGraphics2D mStageGraphics;
 
     private Point2D mMousePosition = null; // null before we have actually seen
@@ -64,7 +73,13 @@ public class StagePanel extends JPanel {
     public void paintComponent(Graphics g) {
         super.paintComponent(g); // Paint background
         //this.requestFocus(); // eats my ESC
-        mStageGraphics.startStageRender((Graphics2D) g);
+        Graphics2D g2d = (Graphics2D) g;
+        AffineTransform old = g2d.getTransform();
+        g2d.translate(this.getWidth()/2, this.getHeight()/2);
+        g2d.scale(mPanelScale.getX(), mPanelScale.getY());
+        g2d.translate(-this.getWidth()/2, -this.getHeight()/2);
+
+        mStageGraphics.startStageRender(g2d);
         mRoot.drawVO(mStageGraphics);
         mStageGraphics.finishStageRender();
         // We are now 'technically' in between paintStage and updateStage.
@@ -73,6 +88,7 @@ public class StagePanel extends JPanel {
 
         // Now check for triggering object interactions
         checkTriggerPoints(mRoot, mStageGraphics.getHitmap());
+        g2d.setTransform(old);
     }
 
     private void reportMouseAction() {
@@ -254,9 +270,9 @@ public class StagePanel extends JPanel {
      * @param width the (initial) canvas width
      * @param height the (initial) canvas height
      */
-    public StagePanel(Hitmap hm, StageVO root, int width, int height) {
-        mStageGraphics = new StageGraphics2D(hm);
-        mRoot = root;
+    public StagePanel(Hitmap hm, Stage stage, int width, int height) {
+        mStageGraphics = new StageGraphics2D(hm,stage);
+        mRoot = stage.getRoot();
         mCanvasWidth = width;
         mCanvasHeight = height;
         mStageGraphics.resizeHitmap(width, height);

@@ -3,6 +3,7 @@ package com.putable.videx.core;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 
+import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
 
 public interface VOGraphics2D {
@@ -19,6 +20,12 @@ public interface VOGraphics2D {
 
     public abstract void renderVO(VO vo);
 
+    /**
+     * Get the Stage that we are on
+     * @return
+     */
+    public abstract Stage getStage();
+    
     /**
      * Finish vo rendering
      * 

@@ -18,6 +18,7 @@ import com.putable.videx.core.events.KeyboardEventInfo;
 import com.putable.videx.core.events.SpecialEventInfo;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.core.oio.OIOTop;
+import com.putable.videx.interfaces.OIOAble;
 import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.Slide;
 import com.putable.videx.interfaces.SlideDeck;
@@ -33,7 +34,7 @@ import com.putable.videx.std.vo.image.OIOImage;
 import com.putable.videx.utils.FileUtils;
 
 @OIOTop
-public class BasicSlide extends EventAwareVO implements Slide {
+public class BasicSlideNotes extends EventAwareVO implements Slide, OIOAble {
 
     {
         this.setIsFocusAware(true);
@@ -56,11 +57,13 @@ public class BasicSlide extends EventAwareVO implements Slide {
 
     @OIO(inline = false, extension = ".html")
     private String mTextString = null;
-/*
-    @OIO(inline = false, extension = ".notes")
+
+    @OIO
     private String mNotesString = null;
-  */  
-    public String getNotesStringIfAny() { return null; /*mNotesString;*/ }
+
+    public String getNotesStringIfAny() { 
+        return mNotesString;
+    }
     
     @OIO
     private double mHTMLWidthFraction = 0.60;
@@ -109,13 +112,13 @@ public class BasicSlide extends EventAwareVO implements Slide {
         return mTextString;
     }
 
-    public BasicSlide() {
+    public BasicSlideNotes() {
         this.setBackground(Color.black);
-        this.setForeground(Color.yellow);
-        this.mSlideName = "unknown";
+        this.setForeground(Color.gray);
+        this.mSlideName = "unknown notes";
     }
 
-    public BasicSlide(String name) {
+    public BasicSlideNotes(String name) {
         this();
         this.mSlideName = name;
     }
@@ -138,17 +141,16 @@ public class BasicSlide extends EventAwareVO implements Slide {
             }
             break;
         }
-
+        /*
         case PRESENTER_SCREEN: {
-            String notes = this.getNotesStringIfAny();
-            if (notes != null)
-                mText.setText(notes);
-            else
-//                mText.setText("<HTML><pre>CALLMMSMSMM\nKDKLDSLKewwedfkled\nYOwlksdfklsdfl\nsdfklklsd2893ewio\n</pre>"); 
-             mText.setText("<HTML>-not yet-"); 
+            if (this.mNotesString != null
+                    && !this.mNotesString.equals(this.mLoadedText)) {
+                mLoadedText = mNotesString;
+                mText.setText(mLoadedText);
+            }
             break;
         }  
-
+         */
         }   
         checkRider();
         return true;

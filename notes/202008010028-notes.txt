@@ -1,0 +1,216 @@
+{21}  -*- text -*- 
+[0:
+
+Sat Aug  1 00:28:53 2020 Well 'shoot', another one of the bad things
+about ECLIPSE and IDEs generally is I don't have an established place
+to put development notes.
+
+So I'm starting a notes/ directory here and just using emacs
+externally to populate it, although that will probably mean that
+Eclipse will get mad about staleness or whatever and I'll have to be
+refreshing the workspace all day long.
+
+:0]
+[1:
+
+Sat Aug  1 00:30:35 2020 SO I'm here because it's time to get serious
+about how we're going to link up our new 'teleprompter' tech to the
+existing scripting system.
+
+CURRENT STATUS:
+
+ - The hardware is looking pretty credible.
+
+   = Cheap 7" HDMI monitor hooked to the Dell AIO workstation by an
+     HDMI<->DP cable, so we are now driving a total of three monitors
+     ranging from 4K to HD to 1280x720-something.
+
+   = Monitor is placed facing up inside the LED light ring used for
+     fill and eye highlights, attached by a custom 3D printed
+     bracket between a slot on the back of the monitor and and a slot
+     on the base of the ring light.
+
+   = Custom 3D printed enclosure holding a standard 5"x7" piece of
+     frame glass at a 45 degree angle.  Enclosure sits directly on the
+     bezel of the monitor, with a friction-fit plus gravity so it's
+     not hard to remove from the monitor as a unit.
+[2: Sat Aug  1 01:17:49 2020 
+
+ - The software, on the other hand, barely exists at all.
+
+   = We have a separate JFrame to put in the teleprompter panel
+
+   = It does appropriate rotation/mirroring, and provides scale and x
+     and y adjustments for positioning a single static text
+
+   = And that text is currently hardcoded in the ctor..
+
+:2]
+
+:1]
+[3:
+
+Sat Aug  1 01:18:14 2020 So, let's have some
+
+TODO
+
+[5:
+DONE :5] - Come on, try a spike to see if we could have two stages in two
+   top-level JFrames at once.  Just try it and see how bad the
+   breakage is.
+
+[6:
+DONE :6] - The world splits depending on the previous item.  So just do the
+   previous item.
+
+[7: Sat Aug  1 14:51:14 2020
+DONE :7] - Do it now.
+[8:
+
+[10: Sun Aug  2 00:04:13 2020 
+DONE :10] - The entire presenter screen needs to be mirrored: Can we do that in
+   Java but in some half-systematic way, so that (e.g.,) mouse hits
+   continue to work?
+
+ - We need to come up with separate content for the presenter screen.
+
+
+:8]   
+:3]
+[4:
+
+Sat Aug  1 14:48:09 2020 OK, so, took the morning through second
+sleep, but we now have a live second stage running on the presenter
+screen.  It currently has the same slide deck as on the main screen,
+but the display is (mostly) independent: The presenter screen handles
+its own events, and we can change slides on it without affecting the
+main screen display.
+
+Let's claim and then flesh out our to-dos above.
+
+:4]
+[9:
+
+Sun Aug  2 00:04:19 2020 OK we're taking too too long on this
+presenter crab, of course.
+
+Right now we have a second stage running on the presenter screen,
+which is separately loading the same tree as the main screen.
+
+ - Probably the simplest thing near here is to feed some flag in the
+   stages so that any VO can ask whether it's on the main screen or
+   the presenter screen and change its behavior as it wishes.
+
+   (Or just add a 'Stage getStage()' to the VO interface.  Is it
+   already there?[11: Sun Aug  2 00:20:20 2020 No, we pass a Stage arg
+   to updateVO, but not to drawVO.  But drawVO gets a VOGraphics2D,
+   which we might be able to add a getStage() method to..[12: Sun Aug
+   2 00:53:32 2020 OK, now there's 'Stage VOGraphics.getStage()'
+   :12] :11])
+
+   That would allow us to change to displaying notes vs slides, and
+   supply 'teleprompter scrolling' rider behavior.  The
+   main-vs-presenter behavioral differences will be scattered all over
+   hail and creation, but..
+
+ - An alternative would be to diverge during the loading so we end up
+   with distinctly different stage contents, like with BasicSlides on
+   the main screen but BasicNoteSlides on the presenter screen.
+
+   That seems to involve a lot more design, and more understanding of
+   the existing codebase to support such design.
+
+:9]
+[13:
+
+Sun Aug  2 05:04:48 2020 Well, so we went with a Stage.Purpose
+getPurpose() interface, so far with choices of MAIN_SCREEN and
+PRESENTER_SCREEN.
+
+And now we have notes text displaying on the presenter screen, and the
+main slide on the main screen.  Fine.  But so far we've just diverted
+at the level of the text that gets rendered -- mNotesString vs
+mTextString, with control splitting in BasicSlide.updateThisVO.
+
+But we need to divert a lot more than just that.  We need a differen
+Pose, for example, and different colors, and we're going to need
+different rider behavior as well.  We're going to do all that with
+foggen switch statements all over hail and creation?
+
+Could we subclass BasicSlide instead?  BasicSlideMain vs
+BasicSlideNotes?  But when we're loading these things we're reading
+the parameters from text template files.
+
+Could we expand genscript template generation instead?  So it
+generates like an entirely different save/load directory for the
+presenter stage?  Or leaves them all in one directory but generates
+two roots, one for each stage?  Then we could have notes templates
+with different colors and poses and scroll rates and so forth.
+
+Something like that seems better.[14:
+
+Sun Aug  2 05:37:30 2020 But I'm tired.  Second sleep.
+
+:14]
+
+:13]
+[15:
+
+Sun Aug  2 10:23:16 2020 So how would a genscript expansion go?
+
+Right now we have note text landing in $slideNotes{$index}, and then
+going to $SUBS{'CUR_NOTES_TEXT'} during genSlideFromText.
+
+[16:
+
+Sun Aug  2 10:29:20 2020 So, we could add a mNotesSlide member to
+BasicSlide, and generate that in the SLIDE.oio.tmpl template with like
+#(aux:mNotesSlide), and so forth.  That would get us access to the
+notes slide from the main screen, but it wouldn't get the notes slide
+itself up onto the presenter screen.
+
+How does the 'aux' system work, again?[17:
+
+Sun Aug  2 10:49:36 2020 There's $SUBS{'BASE_AUX_ID'}, and it's
+incremented and used whenever an 'aux:FOO' is encountered for the
+first time.
+
+[18:
+
+Sun Aug  2 11:06:36 2020 How is the root threading set up?[19:
+
+Sun Aug  2 11:07:14 2020 DECK.oio.tmpl has a BasicSlideDeck hardcoded
+to #11, and uses '#(SLIDES)' as its mVO value.  genscript
+$SUBS{'SLIDES'} accumulates all the slide ids allocated in
+genSlideFromText calls.  We could parallel that for notes.
+
+And the Java code eventually picks up the hardcoded #11?  Let's
+check. [20:
+
+Sun Aug  2 11:43:33 2020 Twisted..  We for file 0.oio only, we call
+OIOLoad.processTop(File) which looks at the first token, demands that
+it's an onum, and sets mTopOnum to it (horking if mTopOnum is already
+set).  Later, OIOLoad uses mTopOnum to find the OIOAble to return, and
+that becomes the mLoadedRoot in OIOLoadConfiguration.  Finally,
+mLoadedRoot becomes a child of OIOLoadStage.mRoot, which is, I think,
+the 'real root'.
+
+So not completely clear how to establish the 'notes root'.  Add
+mNotesRoot to BasicSlideDeck, genscript it in, then have OIOLoad check
+for it and pass it off to the notes stage.
+
+That means we have to _not_ do the loading on the notes side.  But
+we've already split the flows at that point?
+
+
+:20]
+
+:19]
+
+:18]
+
+:17]
+
+:16]
+
+:15]

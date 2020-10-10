@@ -21,7 +21,11 @@ public interface Configuration {
 
     World buildWorld(Configuration config);
 
+    World buildNotesWorld(Configuration config);
+
     String getTitle();
+    
+    boolean wantFullScreen();
 
     int getFPS();
 }

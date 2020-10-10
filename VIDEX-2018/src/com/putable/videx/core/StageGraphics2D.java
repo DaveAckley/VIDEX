@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 
+import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
 
 /**
@@ -17,18 +18,23 @@ public class StageGraphics2D implements VOGraphics2D {
     private Graphics2D mScreenG2D;
     private boolean mShowHitmap = false;
     private final Hitmap mHitmap;
+    private final Stage mStage;
     
     private boolean mIsRenderingToHitmap; // For clients that truly need to know..
 
     @Override
     public boolean isRenderingToHitmap() { return mIsRenderingToHitmap; }
     
+    @Override
+    public Stage getStage() { return mStage; }
+    
     public Hitmap getHitmap() { return mHitmap; }
     public SXRandom getRandom() { return mHitmap.getRandom(); }
     
-    public StageGraphics2D(Hitmap hm) {
+    public StageGraphics2D(Hitmap hm, Stage stage) {
         if (hm == null) throw new NullPointerException();
         this.mHitmap = hm;
+        this.mStage = stage;
     }
     
     public void resizeHitmap(int width, int height) {
@@ -55,7 +61,7 @@ public class StageGraphics2D implements VOGraphics2D {
         this.mIsRenderingToHitmap = toHitmap;
         
         AffineTransform at = g2d.getTransform();
-        g2d.setTransform(vo.getVOCToPixelTransform(null));
+        g2d.transform(vo.getVOCToPixelTransform(null));
         
         Color oldfg = null;
         Color oldbg = null; 

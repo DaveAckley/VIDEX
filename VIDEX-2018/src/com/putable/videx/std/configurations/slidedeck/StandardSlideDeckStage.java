@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 
 import com.putable.videx.core.AbstractJFrameStage;
 import com.putable.videx.interfaces.Configuration;
+import com.putable.videx.interfaces.Stage;
 import com.putable.videx.interfaces.VO;
 import com.putable.videx.interfaces.World;
 import com.putable.videx.std.vo.StageVO;
@@ -30,7 +31,10 @@ public class StandardSlideDeckStage extends AbstractJFrameStage {
         //ASTNode tree = compiler.getSlideDeck();
         //throw new UnsupportedOperationException("poopab");
     }
-    
+
+    @Override
+    public Stage.Purpose getPurpose() { return Stage.Purpose.MAIN_SCREEN; }
+
     @Override
     public void updateStage(World world) {
         mRoot.updateVO(this);

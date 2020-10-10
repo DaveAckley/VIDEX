@@ -16,6 +16,19 @@ import com.putable.videx.std.vo.StageVO;
  */
 public interface Stage {
 
+    enum Purpose {
+        MAIN_SCREEN,
+        PRESENTER_SCREEN
+    };
+
+    /**
+     * Get the purpose of this stage. VOs may present different characters or
+     * behaviors depending on the stage
+     * 
+     * @return the purpose
+     */
+    Purpose getPurpose();
+    
     /**
      * Get the World this Stage is associated with
      * @return the World
