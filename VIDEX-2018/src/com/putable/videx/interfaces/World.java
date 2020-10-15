@@ -9,14 +9,18 @@ import com.putable.videx.core.SXRandom;
  *
  */
 public interface World extends Iterable<Stage> {
+    String getName();
+    
     boolean addStage(Stage stage);
 
     Stage removeStage(Stage stage);
 
     void destroyWorld();
 
-    void runWorld();
+    void runWorld(Universe u);
 
+    Universe getUniverseOrNull();
+    
     SXRandom getRandom();
     
     Configuration getConfiguration();

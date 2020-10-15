@@ -2,6 +2,7 @@ package com.putable.videx.drivers;
 
 import javax.swing.JFrame;
 
+import com.putable.videx.core.StandardUniverse;
 import com.putable.videx.interfaces.Configuration;
 import com.putable.videx.interfaces.World;
 
@@ -40,7 +41,7 @@ public class CompilerDriver extends JFrame {
 //                OIOCompiler compiler = new OIOCompiler(deckdir,s);
 //                compiler.reload();
 //            }
-            mWorld.runWorld();
+            mWorld.runWorld(StandardUniverse.makeOneWorldUniverse(mWorld));
         } 
         catch (Exception e) {
             die("Can't instantiate "+configClassName+":\n"+e.toString());

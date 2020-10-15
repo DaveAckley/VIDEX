@@ -5,6 +5,6 @@ import java.util.function.Consumer;
 public class DevNullConsumer implements Consumer<String> {
     @Override
     public void accept(String t) {
-        /*bye now*/
+        System.err.println("DEVNULCON: "+t);
     }
 }

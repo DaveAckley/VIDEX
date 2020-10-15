@@ -12,16 +12,24 @@ import javax.swing.Timer;
 
 import com.putable.videx.interfaces.Configuration;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.interfaces.Universe;
 import com.putable.videx.interfaces.World;
 
 public abstract class StandardWorld implements World, ActionListener {
     private int mFramesPerSecondTarget;
     private boolean mThreadRunning;
     private Timer mTimer;
+    private final String mWorldName;
+    private Universe mUniverseOrNull;
     
     private List<Stage> mStages = new LinkedList<Stage>();
     private SXRandom mRandom = new SXRandom();
     private final Configuration mConfig;
+    
+    @Override
+    public String getName() {
+        return mWorldName;
+    }
     
     @Override
     public SXRandom getRandom() {
@@ -56,6 +64,7 @@ public abstract class StandardWorld implements World, ActionListener {
     }
     
     public StandardWorld(Configuration config) {
+        this.mWorldName = config.getWorldName();
         this.mConfig = config;
         this.mFramesPerSecondTarget = config.getFPS();
         if (this.mFramesPerSecondTarget < 0) this.mFramesPerSecondTarget = 0;
@@ -88,7 +97,13 @@ public abstract class StandardWorld implements World, ActionListener {
     }
 
     @Override
-    public void runWorld() {
+    public Universe getUniverseOrNull() {
+        return mUniverseOrNull;
+    }
+    
+    @Override
+    public void runWorld(Universe u) {
+        mUniverseOrNull = u;
         mThreadRunning = true;
         int msDelay = 10;
         if (StandardWorld.this.mFramesPerSecondTarget > 0) {

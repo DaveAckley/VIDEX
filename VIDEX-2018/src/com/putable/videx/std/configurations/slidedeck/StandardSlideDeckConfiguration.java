@@ -1,5 +1,7 @@
 package com.putable.videx.std.configurations.slidedeck;
 
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.lang.invoke.MethodHandles;
 
 import com.putable.videx.core.AbstractConfiguration;
@@ -9,15 +11,13 @@ import com.putable.videx.interfaces.World;
 
 public class StandardSlideDeckConfiguration extends AbstractConfiguration {
 
+    public StandardSlideDeckConfiguration(String worldname) {
+        super(worldname,new Rectangle2D.Double(0,0,100,100));
+    }
+    
     @Override
     public World buildWorld(Configuration config) {
         return new StandardSlideDeckWorld(config);
-    }
-
-    @Override
-    public World buildNotesWorld(Configuration config) {
-        throw new RuntimeException("UNIMPLEMENTED XXX");
-        //return new StandardSlideDeckWorld(config);
     }
 
     @Override
@@ -39,5 +39,10 @@ public class StandardSlideDeckConfiguration extends AbstractConfiguration {
     @Override
     public boolean wantFullScreen() {
         return true;
+    }
+
+    @Override
+    public Point2D getStagePanelScale() {
+        throw new IllegalStateException();
     }
 }

@@ -17,11 +17,14 @@ import com.putable.videx.core.oio.OIOTop;
 import com.putable.videx.core.oio.save.OIOLoad;
 import com.putable.videx.core.oio.save.OIOSave;
 import com.putable.videx.drivers.OIOLoadConfiguration;
+import com.putable.videx.drivers.OIOLoadNotesConfiguration;
 import com.putable.videx.interfaces.Configuration;
+import com.putable.videx.interfaces.OIOAble;
 import com.putable.videx.interfaces.OIOAbleGlobalMap;
 import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.SlideDeck;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.interfaces.Universe;
 import com.putable.videx.interfaces.VO;
 import com.putable.videx.interfaces.World;
 import com.putable.videx.std.riders.SOSIPoseRider;
@@ -139,10 +142,42 @@ public class BasicSlideDeck extends EventAwareVO implements SlideDeck {
      * @return
      */
     private boolean gotoSlide(int newslide) {
+        int myOnum = this.getOnum();
+        World myWorld = this.getWorld();
+        Universe u = myWorld.getUniverseOrNull();
+        if (u == null) throw new IllegalStateException("I DIDN'T THINK IT COULD REALLY BE NULL");
+        for (World w : u) {
+            if (w == myWorld) continue;
+            Configuration config = w.getConfiguration();
+            if (!(config instanceof OIOLoadConfiguration)) 
+                continue;
+            OIOLoadConfiguration olc = (OIOLoadConfiguration) config;
+            OIOLoad loader = olc.getLoader();
+            OIOAbleGlobalMap omap = loader.getMap();
+            OIOAble oa = omap.get(myOnum);
+            if (oa == null) {
+                System.out.println("NO MATCH FOR MY ONUM "+myOnum+" IN WORLD "+w.getName());
+                continue;
+            }
+            if (!(oa instanceof BasicSlideDeck)) {
+                System.out.println("ONUM "+myOnum+" IS "+oa+" IN WORLD "+w.getName());
+                continue;
+            }
+            BasicSlideDeck bsd = (BasicSlideDeck) oa;
+            bsd.gotoSlidePublically(newslide);
+        }
+        return gotoSlidePublically(newslide);
+    }
+    
+    public boolean gotoSlidePublically(int newslide) {
         int slides = countSlides();
         if (newslide < 0) mCurrentSlide = 0; 
         else if (newslide > slides) mCurrentSlide = slides+1;
         else mCurrentSlide = newslide;
+        System.out.printf("BSD GOTO %d W %s on#%d\n",
+                newslide,
+                getWorld().getName(),
+                this.getOnum());
         setRiders();
         return true;
     }

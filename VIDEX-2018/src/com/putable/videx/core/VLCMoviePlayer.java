@@ -15,7 +15,7 @@ public class VLCMoviePlayer {
     public VLCMoviePlayer() {
     }
     private static final String[] cSTD_CMD_ARGS = {
-            "/usr/bin/vlc",
+            "vlc",
             "--no-loop",
             "--play-and-exit",
             "--input-repeat","0",

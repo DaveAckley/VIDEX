@@ -1,4 +1,4 @@
-{21}  -*- text -*- 
+{67}  -*- text -*- 
 [0:
 
 Sat Aug  1 00:28:53 2020 Well 'shoot', another one of the bad things
@@ -214,3 +214,443 @@ we've already split the flows at that point?
 :16]
 
 :15]
+[21:
+
+Sat Oct 10 14:08:30 2020 OK so here we are again, trying to get
+'teleprompter notes' working in VIDEX.
+
+Reviewing these notes for clues what the plan was/should be.
+
+:21]
+[22:
+
+Sat Oct 10 14:10:42 2020 OK, so :4: is claiming we got to a second
+stage running on the presenter screen, and the issue was how to get
+content for the presenter screen.
+
+:13: took us down the road of splitting the display processing based
+on which stage we're in, but it looked hard to extend to additional
+variant properties, and it was starting to think about alternatives
+based on splitting BasicSlide into something including
+BasicSlideNotes.
+
+:15: started down that road, and :16: postulated
+BasicSlide.mNotesSlide as a way to link slides on the main screen to
+their notes counterpart on the presenter screen.
+
+:19: and :20: think about ways to get the 'notes root' associated with
+the presenter screen, and then it all just quits.
+
+So that's our frontier.
+
+:20: talks about having 'split the flows', which I believe means we've
+actually loaded the whole oio code twice -- once for each stage -- but
+is that true?  Can we find that split and remind ourself what's what?
+
+[23:
+
+Sat Oct 10 15:06:37 2020
+
+ - Our current main() is in ..drivers.OIOLoadDriver2020
+
+..aah and there's the split right there, apparently:
+
+            OIOLoad oio = new OIOLoad(basedir, omap);
+            OIOLoad oioNotes = new OIOLoad(basedir, omap);
+  ..
+            mConfiguration = new OIOLoadConfiguration(oio);
+            mNotesConfiguration = new OIOLoadNotesConfiguration(oioNotes);
+            mWorld = mConfiguration.buildWorld(mConfiguration);
+            if (mWorld==null)
+                throw new Exception("World construction failed");
+            mNotesWorld = mNotesConfiguration.buildNotesWorld(mNotesConfiguration);
+  ..
+
+[24:
+
+Sat Oct 10 15:23:55 2020 So what actually is the problem?  mNotesWorld
+from mNotesConfiguration from buildNotesWorld?  Why isn't everything
+completely separate?  Let's watch some of it, I guess.[25:
+
+Sat Oct 10 15:39:43 2020 So have been watching it.  mNotesWorld ends
+up a completely separate thing with a separate map of onums and so
+forth, so there's actually two copies of oio, say, #3501, in the
+system as a whole.  So the current idea of having
+BasicSlide.mNotesSlide pointing at the notes slide is a little awkward
+because the presenter screen has all the BasicSlide's too.  The 'notes
+root' is going to be the same as the 'real' root, but getting looked
+up in a different onum map.
+
+Could we keep changing the 'effective' onum root, somehow?  When a
+BasicSlide gets presented on the main screen, we take its mNotesSlide
+and stuff it into the presenter screen root?  Or just have some
+screen-aware display hack that forwards display requests from
+BasicSlides to BasicSlide.mNotesSlide when we're on the presenter
+screen?  And then couple slide changes on the main screen to the
+analogous change on the presenter screen?
+[26:
+
+Sat Oct 10 16:04:03 2020 OK, so oios actually were getting displayed
+on the presenter screen, and differentially because of that, but they
+were all shrunk down and invisible, and they don't advance when the
+main screen advances because they're in a completely separate world.
+
+So we can see '-not yet-'s on the presenter screen (although they are
+upside down and backwards at the moment).
+[27:
+
+Sat Oct 10 16:19:44 2020 OK, more notes:
+
+ - MirrorPanel exists but is currently unused.
+
+ - Instead, there's this code in OIOLoadNotesConfiguration
+
+  ..       if (!reloadIfNeeded()) {
+                StagePanel sp = this.getStagePanel();
+                if (sp != null)
+                    sp.setPanelScale(new Point2D.Double(1,-1));
+
+                mRoot.updateVO(this);
+            }
+ 
+which (now), correctly flips just the Y axis, and not the X axis --
+and now we have the '-not yet-'s appearing upright and legible on the
+presenter screen.
+[28:
+
+Sat Oct 10 16:23:34 2020 So.  How could we couple main screen slide
+changes to the presenter screen?  It's the slide deck that knows which
+slide is really being 'shown' (even though all the slides are on the
+screen). [29:
+
+Sat Oct 10 16:35:47 2020 So BasicSlideDeck.gotoSlide changes the
+presented slide.  Not clear how to hook out from that.
+
+Perhaps we could hook in rather than out -- have the presenter screen
+BasicSlideDeck somehow know to track the mCurrentSlide on its main
+screen counterpart.  At least that puts the grossness in the hacky
+extra stuff.[30:
+
+Sat Oct 10 16:38:45 2020 Having BasicSlideDeckNotes (which we
+currently do not) could maybe also help to get differential css, via
+BasicSlideDeck(Notes).checkLoadCSS().[31:
+
+Sat Oct 10 16:40:00 2020 So we have both updateThisVO and drawThisVO
+available as hooks in BasicSlideDeck.
+
+We're going to need some object-to-rule-them-all letting us cross
+between the two worlds.[32:
+
+Sat Oct 10 16:41:58 2020 I guess at the moment OIOLoadDriver2020 is
+that uber-object.  It's the one with:
+
+ .. private Configuration mConfiguration;
+    private Configuration mNotesConfiguration;
+
+    private World mWorld;
+    private World mNotesWorld;
+ ..
+
+So that would be a natural place to split out a 'universe' interface
+or base class -- a thing capable of supporting multiple worlds and
+navigating between them.
+[33:
+
+Sat Oct 10 16:48:28 2020 That's a place to pick up, I think.  But now
+it's just about time for cocktails.
+
+:33]
+:32]
+
+:31]
+
+:30]
+
+:29]
+
+:28]
+:27]
+:26]
+
+:25]
+
+:24]
+
+:23]
+
+:22]
+[34:
+
+Sun Oct 11 01:12:56 2020 OK let's try making Universe.
+
+[35: Sun Oct 11 03:33:17 2020
+DONE :35] - Supports multiple named worlds, for creation and lookup
+
+[36: Doesn't care one way or the other, so moot; let's say
+DONE :36] - Supports common or separate args for loading (we'll start using
+   common)
+
+[37:
+DONE :37] - And, let's try to say: That's all.
+
+:34]
+[38:
+
+Sun Oct 11 03:33:46 2020 So okay, Worlds now have names and access to
+the universe.[39:
+
+Sun Oct 11 04:09:32 2020 I guess let's see if we can get the
+BasicSlideDeck of MAIN World to control the BasicSlideDeck of the
+PRESENTER World..[40:
+
+Sun Oct 11 04:31:02 2020 OK and how do we get from a World to its
+contained BasicSlideDeck?  It's a long way away:
+
+ - A World can have multiple Stages
+
+ - Each Stage has a StageVO getRoot()
+
+ - A StageVO is a StandardVO which has a general tree of VO children
+
+ - The BasicSlideDeck is a 'few more levels' down from the StageVO.
+   I'm not even sure how many.
+
+So do we walk the tree?  Walk it each time we need it?  Cache a set of
+onums?  Are the onums going to be the same for sure or different for
+sure? [41:
+
+Sun Oct 11 04:40:02 2020 It looks like the onums are identical..  So
+how do we look up an onum in a world?
+[42:
+
+Sun Oct 11 04:42:29 2020 Well, we can get an iterator to the Stages
+via World.iterator(), or we can call World.forEach() with some lambda
+Stage Consumer.
+
+[43:
+
+Sun Oct 11 04:45:38 2020 We need to get our hands on the OIOLoad
+object; that's where the mOnumMap lives.[44:
+
+Sun Oct 11 04:46:32 2020 And OIOLoadConfiguration has a reference to
+it in its mLoader.[45:
+
+Sun Oct 11 04:47:47 2020 And the OIOLoadWorld ctor takes an
+OIOLoadConfiguration reference, which it passes to its super,
+StandardWorld, and StandardWorld.mConfig holds the ref.[46:
+
+Sun Oct 11 04:49:16 2020 And StandardWorld's World.getConfiguration()
+method returns it.
+
+So:
+
+     World w = ..;
+     Configuration config = w.getConfiguration();
+     if (!(config instanceof OIOLoadConfiguration)) boom;
+     OIOLoadConfiguration olc = (OIOLoadConfiguration) config;
+     OIOLoad loader = olc.getLoader();
+     OIOAbleGlobalMap omap = loader.getMap();
+     OIOAble oa = omap.get(ONUMOFINTEREST);
+     if (oa == null) deal;
+     if (!(oa instanceof BasicSlideDeck)) deal;
+     BasicSlideDeck bsd = (BasicSlideDeck) oa;
+     bsd.gotoSlidePublically(SLIDENUMBER)
+
+Glarrgh. Well it might work.
+[47:
+
+Sun Oct 11 05:08:17 2020 Well, so now we have the presenter screen
+slide deck following the moves on the main screen.
+
+It's terribly hacky but it still does feel like progress.
+
+Issues:
+
+ - We have a OIOLoadConfiguration vs OIOLoadNotesConfiguration
+   distinction that can probably go away, and if it doesn't, at least
+   they should be refactored to have an immediate common base.
+
+ - How do we start changing appearance details more systematically?
+   We want:
+   = Smaller font
+   = Greyer font
+   = Faster slide changing
+   = Pose adjustments
+
+ - And eventually we (have been thinking we'd) want to direct commands
+   to the presenter screen specifically, for example to page or scroll
+   the notes without affecting the main screen. [49: Sun Oct 11 07:18:27 2020 Also:
+
+ - At the moment genscript is putting the notes into a separate
+   object, but the code wants to look for a mNotesString member on
+   BasicSlide, so the genscript notes text is not currently getting
+   visualized at all.
+
+:49]
+[48:
+
+Sun Oct 11 06:55:51 2020 Could we have more support from genscript,
+like for World-specific templates?  CSS.PRESENTER.tmpl or whatever?
+[50:
+
+Sun Oct 11 11:48:38 2020 Poking through stuff, it looks at least
+plausible that we could extend OIOCompiler to stash a world name at
+ctor-time, and pass that down into Lexer at OIOCompiler.compile(..)
+time, and then make some 'preprocessor' syntax for some kind of
+'if-world' token.
+
+Like say '?'.  We could insist on a TT_WORD following a '?', and then
+check if that word matches the OIOCompiler.mWorldName.  If it matches,
+then the '?' plus the TT_WORD just vanishes.  If it doesn't match,
+then the '?' plus the TT_WORD plus the rest of the line vanishes.
+
+Could also have perhaps '!' mean eat line if the names do match, if we
+wanted it.
+
+That would get us a minimal kind of 'conditional compilation' at the
+oio level -- sufficient to handle variant poses, for example, in a
+vaguely localized manner.
+
+It would not, though, address the issue of how to get variant css out
+of .css files, the contents of which we don't currently parse at all,
+by ourselves.
+
+[51: Sun Oct 11 12:03:26 2020 It could also be enough to handle notes
+vs regular html?  Except no, the html is done with non-inline files
+just like the .css stuff.  OIOLoad.mOutOfLineContent is currently
+
+ { ONUM -> { EXTENSION -> byte array } }
+
+for all the files in the load dir whose first 'piece' is a lex
+number.  [52:
+
+Sun Oct 11 12:16:38 2020 Now, at this point, OIOLoad.decomposeFileName
+will hork and skip a filename like "3501.PRESENTER.html", but we could
+extend it if we wanted.  Then callers would need to deal with that.
+Of which there are currently..  [53: Sun Oct 11 12:19:05 2020
+..precisely one caller, so that's not so bad I guess.
+
+Could extend mOutOfLineContent to
+
+  { ONUM -> { EXTENSION -> { WORLD -> byte array } } }
+
+with like an empty string for an unspecified world?  Then search for
+world-specific first but fall back to unspecified?  How many
+mOutOfLineContent consumers are there?[54:
+
+Sun Oct 11 12:21:47 2020 Just the OIOLoad.considerFile that we already
+looked at, plus OIOLoad.getOutOfLineContentIfAnyAsByteArray, which
+would be where the world-specific-or-fallback behavior would happen,
+presumably.
+[55:
+
+Sun Oct 11 12:23:45 2020 OK, let's go for it.
+
+TODO
+
+[59: Sun Oct 11 13:52:33 2020 I think,
+DONE :59] - Extend mOutOfLineContent, getOutOfLineContentIfAnyAsByteArray,
+   considerFile, and decomposeFileName as directed above.
+
+[60: Sun Oct 11 14:56:45 2020 A cut anyway
+DONE :60] - Redo genscript to generate slide html code into like
+   3501.MAIN.html, and slide notes into 3501.PRESENTER.html.
+
+[61: Sun Oct 11 14:56:55 2020
+DONE :61] - Demonstrate variant content appearing on the main screen vs the
+   presenter screen.
+
+[65: Sun Oct 11 16:52:54 2020 Let's not mess with Lexer today, and say
+DONE :65] - Return here to consider finalizing the Lexer level conditional
+   stuff.
+
+[56: Sun Oct 11 12:28:10 2020 GO GO GO
+[57:
+
+Sun Oct 11 12:51:48 2020 Getting there.  Issue in construction order:
+Currently OIOLoad is built before OIOLoadConfiguration, but the world
+name isn't known until OIOLoadConfiguration time, so we can't supply
+it to the OIOLoad ctor, even though by rights it ought to be final.
+
+ - OIOLoadConfiguration.mLoader is final..
+
+ - StandardWorld.mWorldName is final..
+
+Could we build the loader inside OIOLoadConfiguration?  And I guess
+give the world name to OIOLoadConfiguration too?  We should push the
+world name deeper into the configuration, presumably.[58:
+
+Sun Oct 11 13:49:19 2020 OK well we're building clean again.
+
+[62:
+
+Sun Oct 11 14:57:16 2020 So, getting there.  Now have notes content on
+the PRESENTER screen and regular content on the MAIN screen, and they
+change slides together.  And, we make a toplevel window for the MAIN
+screen but not the PRESENTER screen.
+
+Problem at the moment is we don't have the PRESENTER screen flipped
+upside-down anymore, because the construction is much more generic
+now.
+
+Where was that flipping happening?  Some Stage thing?[63:
+
+Sun Oct 11 15:10:14 2020 It's in OIOLoadConfiguration.updateStage(),
+via a call on StagePanel.setPanelScale.. which is kind of a gross
+place for it.  Should we push it into the configuration?
+
+:63]
+
+:62]
+:58]
+
+:57]:56]
+
+:55]
+:54]
+
+:53]
+
+:52]
+
+
+
+:51]
+
+:50]
+:48]
+
+:47]
+:46]
+
+:45]
+
+:44]
+
+
+
+:43]
+
+:42]
+:41]
+
+:40]
+
+:39]
+
+:38]
+[64:
+
+Sun Oct 11 16:50:22 2020 Well, really getting there now:
+
+ - PRESENTER screen is flipped and scaled a bit
+
+ - PRESENTER screen starts in the right place and size (YAY)
+
+:64]
+[66:
+
+Sun Oct 11 16:53:26 2020 Let's try actually writing some script/notes
+here and see how all this really feels.
+
+:66]

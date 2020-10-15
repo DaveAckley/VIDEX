@@ -13,7 +13,7 @@ public class OIOTestLoad2 {
     public static void main(String[] args) throws IOException, OIOException {
         String basedir = "/home/ackley/SPIKES";
         GlobalOnumMap omap = new GlobalOnumMap();
-        OIOLoad oio = new OIOLoad(basedir, omap);
+        OIOLoad oio = new OIOLoad(basedir, omap, "TEST");
         OIOAble loaded = oio.load();
         System.out.println("Top is " + loaded + " so do something");
     }

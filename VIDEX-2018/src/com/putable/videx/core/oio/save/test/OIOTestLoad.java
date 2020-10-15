@@ -14,7 +14,7 @@ public class OIOTestLoad {
         OIOAble[] ms = { new MyGuy1(), new MyGuy2(), new MyGuy1() };
         String basedir = "/home/ackley/SPIKES";
         GlobalOnumMap omap = new GlobalOnumMap();
-        OIOLoad oio = new OIOLoad(basedir, omap);
+        OIOLoad oio = new OIOLoad(basedir, omap, "OIOTESTLOAD");
         OIOAble loaded = oio.load();
     }
 

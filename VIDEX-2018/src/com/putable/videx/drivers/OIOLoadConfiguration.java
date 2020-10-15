@@ -1,12 +1,15 @@
 package com.putable.videx.drivers;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
 import com.putable.videx.core.AbstractConfiguration;
 import com.putable.videx.core.AbstractJFrameStage;
+import com.putable.videx.core.StagePanel;
 import com.putable.videx.core.StandardWorld;
 import com.putable.videx.core.oio.OIOException;
+import com.putable.videx.core.oio.load.GlobalOnumMap;
 import com.putable.videx.core.oio.save.OIOLoad;
 import com.putable.videx.interfaces.Configuration;
 import com.putable.videx.interfaces.OIOAble;
@@ -16,16 +19,26 @@ import com.putable.videx.interfaces.World;
 import com.putable.videx.std.vo.StageVO;
 
 public class OIOLoadConfiguration extends AbstractConfiguration {
+    private final GlobalOnumMap mOmap = new GlobalOnumMap();
     private final OIOLoad mLoader;
-
+    private final boolean mWantFullScreen;
+    private final Point2D mStagePanelScale;
     public OIOLoad getLoader() {
         return mLoader;
     }
-    
-    public OIOLoadConfiguration(OIOLoad oio) {
-        if (oio==null) throw new IllegalArgumentException();
-        mLoader = oio;
+
+    @Override
+    public boolean wantFullScreen() { return mWantFullScreen; }
+
+    @Override
+    public Point2D getStagePanelScale() { return mStagePanelScale; }
+    public OIOLoadConfiguration(String basedir, String worldname, boolean fullscreen, Point2D scale, Rectangle2D window) {
+        super(worldname,window);
+        mWantFullScreen = fullscreen;
+        mStagePanelScale = scale;
+        mLoader = new OIOLoad(basedir, mOmap, worldname);
     }
+    
     private static class OIOLoadWorld extends StandardWorld {
         public OIOLoadWorld(OIOLoadConfiguration conf) { 
             super(conf);
@@ -82,8 +95,12 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
 
         @Override
         public void updateStage(World world) {
-            if (!reloadIfNeeded())
+            if (!reloadIfNeeded()) {
+                StagePanel sp = this.getStagePanel();
+                if (sp != null)
+                    sp.setPanelScale(this.getConfiguration().getStagePanelScale());
                 mRoot.updateVO(this);
+            }
         }
 
         
@@ -109,11 +126,6 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
     }
 
     @Override
-    public World buildNotesWorld(Configuration config) {
-        throw new IllegalStateException();
-    }
-
-    @Override
     public String getTitle() {
         return MY_CLASS.getName();
     }
@@ -125,12 +137,6 @@ public class OIOLoadConfiguration extends AbstractConfiguration {
 
     public static final Class<?> MY_CLASS = MethodHandles.lookup().lookupClass();
 
-    @Override
-    public boolean wantFullScreen() {
-        return true;
-    }
-
-        
     /*
     public static void main(String[] s) {
         CompilerDriver.main(new String[] { s[0], MY_CLASS.getName() });

@@ -5,10 +5,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -37,6 +36,8 @@ public class ExternalProgramRunner {
 
         ProcessBuilder builder = new ProcessBuilder();
         builder.command(progAndArgs);
+        //Map<String,String> env = builder.environment();
+        //env.put("PATH","/home/ackley/bin");
         builder.directory(new File(System.getProperty("user.home")));
         Process process;
         if (stdout == null) stdout = new StringConsumer();
@@ -55,7 +56,7 @@ public class ExternalProgramRunner {
         }
     }
     public static void main(String[] args) {
-        String[] cmd = {"ls","-l"};
+        String[] cmd = {"/home/ackley/bin/VLC","-h"};
         StringConsumer stdout = new StringConsumer();        
         StringConsumer stderr= new StringConsumer();        
         new ExternalProgramRunner(cmd,stdout,stderr);
@@ -63,5 +64,6 @@ public class ExternalProgramRunner {
         System.out.println("----STDERR\n"+stderr.toString()+"----");
 
         System.err.println("Clams");
+        System.exit(0);
     }
 }

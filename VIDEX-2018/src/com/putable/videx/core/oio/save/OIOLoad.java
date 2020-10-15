@@ -32,6 +32,7 @@ import com.putable.videx.core.oio.load.AST.ASTObj;
 import com.putable.videx.core.oio.load.AST.ASTValue;
 import com.putable.videx.interfaces.OIOAble;
 import com.putable.videx.interfaces.OIOAbleGlobalMap;
+import com.putable.videx.interfaces.World;
 import com.putable.videx.utils.ClassUtils;
 import com.putable.videx.utils.FileUtils;
 
@@ -43,20 +44,40 @@ public class OIOLoad {
     }
     private final OIOAbleGlobalMap mOnumMap;
     private final OIOValues mOIOValues = new OIOValues(this);
+    private final String mWorldName;
     private String mLastLoadDirectory = null;
     private FileTime mLastLoadDirectoryModificationTime = null;
     private OIOCompiler mCompiler;
 
     private int mTopOnum = -1;
     private List<File> mPendingOIOs = new LinkedList<File>();
-    private Map<Long, HashMap<String, byte[]>> mOutOfLineContent = new HashMap<Long, HashMap<String, byte[]>>();
+    private Map<Long,                       // onum 
+                 HashMap<String,            // extension
+                   HashMap<String,          // world name or ""
+                          byte[]>>>         // full file content
+       mOutOfLineContent = 
+         new HashMap<Long, HashMap<String, HashMap<String, byte[]>>>();
 
+    private HashMap<String, byte[]> getContentByWorldMap(Long onum, String extension) {
+        HashMap<String, HashMap<String, byte[]>> hm1 = 
+                mOutOfLineContent.get(onum);
+        if (hm1 == null) {
+            hm1 = new HashMap<String, HashMap<String, byte[]>>();
+            mOutOfLineContent.put(onum, hm1);
+        }
+        HashMap<String, byte[]> hm2 = hm1.get(extension);
+        if (hm2 == null) {
+            hm2 = new HashMap<String, byte[]>();
+            hm1.put(extension,hm2);
+        }
+        return hm2;
+    }
     private byte[] getOutOfLineContentIfAnyAsByteArray(int onum,
             String extension) {
-        HashMap<String, byte[]> hm = mOutOfLineContent.get(Long.valueOf(onum));
-        if (hm == null)
-            return null;
-        byte[] data = hm.get(extension);
+        HashMap<String, byte[]> hm = getContentByWorldMap(Long.valueOf(onum), extension);
+        byte[] data = hm.get(mWorldName);  // Try for world-specific
+        if (data == null)
+            data = hm.get("");      // Try for default
         return data;
     }
 
@@ -71,9 +92,10 @@ public class OIOLoad {
         return this.mOnumMap;
     }
     
-    public OIOLoad(String baseDir, OIOAbleGlobalMap map) {
+    public OIOLoad(String baseDir, OIOAbleGlobalMap map, String worldname) {
         this.mBaseDirectory = baseDir;
         this.mOnumMap = map;
+        this.mWorldName = worldname;
     }
 
     private void reset() {
@@ -232,13 +254,16 @@ public class OIOLoad {
         mCompiler.loadFile(fileEntry);
     }
 
+    // Returns [0] file base name, [1] optional worldname, [2] extension
     private String[] decomposeFileName(String fname) {
         String[] pieces = fname.split("[.]");
-        if (pieces.length == 0 || pieces.length > 2) {
+        if (pieces.length == 0 || pieces.length > 3) {  // LEX.WORLDNAME.EXTENSION max 3
             System.err.println("SKIPPING WEIRD FILE '" + fname + "'");
             return null;
         } else if (pieces.length == 1)
-            return new String[] { pieces[0], "" };
+            pieces = new String[] { pieces[0], "", "" };
+        else if (pieces.length == 2)
+            pieces = new String[] { pieces[0], "", pieces[1] };
         return pieces;
     }
 
@@ -266,7 +291,10 @@ public class OIOLoad {
         String[] pieces = decomposeFileName(fname);
         if (pieces == null)
             return;
-        String base = pieces[0], extension = pieces[1];
+        String base = pieces[0], world = pieces[1], extension = pieces[2];
+        if (!world.equals("") &&   // Non-world-specific always taken 
+                !world.equals(this.mWorldName)) // Otherwise must match
+            return;
         Long lonum = FileUtils.fromLex(base);
         if (lonum == null)
             System.err.println("SKIPPING NON-LEX FILE '" + fname + "'");
@@ -274,12 +302,11 @@ public class OIOLoad {
             this.mPendingOIOs.add(file);
         else {
             byte[] data = FileUtils.readWholeFileAsByteArray(file.toPath());
-            HashMap<String, byte[]> extdat = this.mOutOfLineContent.get(lonum);
-            if (extdat == null) {
-                extdat = new HashMap<String, byte[]>();
-                this.mOutOfLineContent.put(lonum, extdat);
+            HashMap<String, byte[]> extdat = this.getContentByWorldMap(lonum, extension);
+            if (extdat.get(world) != null) {
+                System.err.println("REPLACING EXISTING FILE PIECES "+pieces);
             }
-            extdat.put(extension, data);
+            extdat.put(world, data);
         }
     }
 

@@ -1,22 +1,18 @@
 package com.putable.videx.core;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.GridLayout;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.event.MouseInputAdapter;
 
 import com.putable.videx.interfaces.Configuration;
@@ -59,7 +55,10 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
             mGraphicsDevice.setFullScreenWindow(this);
         } else {    // Run in windowed mode if full screen is not supported
             Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-            this.setSize(dim.width, dim.height - 40); // minus task bar
+//            this.setSize(dim.width, dim.height - 40); // minus task bar
+            Rectangle2D dw = this.mConfig.getDesiredWindow();
+            this.setSize((int) dw.getWidth(), (int) dw.getHeight() - 40); // minus task bar
+            this.setLocation((int) dw.getX(), (int) dw.getY());
             this.setResizable(true);
         }
 

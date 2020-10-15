@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 import com.putable.videx.core.oio.OIO;
 import com.putable.videx.interfaces.Rider;
 import com.putable.videx.interfaces.Stage;
+import com.putable.videx.interfaces.Universe;
 import com.putable.videx.interfaces.VO;
 import com.putable.videx.interfaces.World;
 import com.putable.videx.std.vo.StageVO;
@@ -26,6 +27,9 @@ public abstract class StandardVO implements VO {
      */
     private int mOnum = -1;
 
+    public Universe getUniverseOrNull() {
+        return getWorld().getUniverseOrNull();
+    }
     /**
      * Get the world from the nearest parental stage, if any
      * 

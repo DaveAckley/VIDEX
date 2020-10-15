@@ -145,7 +145,7 @@ public class BasicSlide extends EventAwareVO implements Slide {
                 mText.setText(notes);
             else
 //                mText.setText("<HTML><pre>CALLMMSMSMM\nKDKLDSLKewwedfkled\nYOwlksdfklsdfl\nsdfklklsd2893ewio\n</pre>"); 
-             mText.setText("<HTML>-not yet-"); 
+             mText.setText("<HTML>-not yet-" + this.getWorld().getUniverseOrNull()); 
             break;
         }  
 

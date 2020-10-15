@@ -1,6 +1,6 @@
 package com.putable.videx.drivers;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
@@ -25,8 +25,8 @@ public class OIOLoadNotesConfiguration extends AbstractConfiguration {
     }
     
     public OIOLoadNotesConfiguration(OIOLoad oio) {
-        if (oio==null) throw new IllegalArgumentException();
-        mLoader = oio;
+        super("OBSOLETE",new Rectangle2D.Double(0,0,100,100));
+        throw new IllegalStateException();
     }
     
     private static class OIONotesWorld extends StandardWorld {
@@ -87,7 +87,7 @@ public class OIOLoadNotesConfiguration extends AbstractConfiguration {
             if (!reloadIfNeeded()) {
                 StagePanel sp = this.getStagePanel();
                 if (sp != null)
-                    sp.setPanelScale(new Point2D.Double(-1,1));
+                    sp.setPanelScale(new Point2D.Double(1,-1));
 
                 mRoot.updateVO(this);
             }
@@ -117,11 +117,6 @@ public class OIOLoadNotesConfiguration extends AbstractConfiguration {
     }
 
     @Override
-    public World buildNotesWorld(Configuration config) {
-        return new OIONotesWorld(this);
-    }
-
-    @Override
     public String getTitle() {
         return MY_CLASS.getName();
     }
@@ -138,7 +133,12 @@ public class OIOLoadNotesConfiguration extends AbstractConfiguration {
         return false;
     }
 
-        
+    @Override
+    public Point2D getStagePanelScale() {
+        throw new IllegalStateException();
+    }
+
+   
     /*
     public static void main(String[] s) {
         CompilerDriver.main(new String[] { s[0], MY_CLASS.getName() });
