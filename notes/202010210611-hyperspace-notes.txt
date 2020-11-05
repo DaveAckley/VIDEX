@@ -1,0 +1,387 @@
+{39}  -*- text -*- 
+[0:
+
+Wed Oct 21 06:12:02 2020 We've been working in
+HyperspaceSpike10/.../Spike13 on getting the hypersubspace hillclimber
+viz going.
+
+Need to get serious about the y axis and how scaling is supposed to
+work.  Want to keep it as squeaky as I can.
+
+:0]
+[1:
+
+Sun Nov  1 06:20:55 2020 So, started trying to incorporate 'selected'
+parts of VIDEX-2018 into the hyperspace spike.  The goal was 'just' to
+get hitmap processing going so that we could detect mouse hits on
+arbitrarily-drawn objects.  Now, the hack has expanded horribly and
+there's no end in sight.  Of course.
+[2:
+
+Sun Nov  1 06:46:49 2020 So what to do.  All of the VIDEX-2018 stuff
+is there for some reason or another.  What to do.
+
+ - Try to lay out a clearer minimal path to mouse-hit processing in
+   the hyperspace spikes.
+
+ - Just go back to VIDEX-2018 and try to implement the hyperspace
+   diagram more carefully and minimally.  [3:
+
+Sun Nov  1 07:29:57 2020 Well I started trying to do that and
+immediately (re-)hit all the kinds of mysterious garbage -- random
+sizes to things that make no sense -- that frustrated me with that
+codebase to begin with.  So now trying to come up from the spike
+again..
+
+[4:
+
+Sun Nov  1 07:31:22 2020 Which means I need to try bailing out of all
+the half-hacked mess I just made yesterday and get back to a cleanish
+spike.. [5:
+
+Sun Nov  1 07:35:34 2020 OK, so spike13 appears to still run, despite
+the 140 compilation errors in the project as a whole..[6:
+
+Sun Nov  1 07:41:17 2020 OK, project Hyperspace10 is now back to 0
+errors.  Plus five warnings, but they're mostly unused warnings about
+stuff I think I'm about to need, so leaving them for now.
+
+So it seems the absolute minimum we need for hitmap processing is:
+
+ - Each separately-hittable drawn thing needs a unique int object id,
+   something OoBwrt hitmap colors (probably something like >1).
+
+ - Each such thing needs to set its fg and bg colors religiously, via
+   our interface, while it's drawing
+
+ - Each hitmapped JPanel needs an offscreen image for the hitmap
+
+ - Some topish-level place to intercept JPanel drawing and do the
+   hitmap as well.
+
+( - Eventually will need the glass layer and custom mouse drawing..)
+[7:
+
+Sun Nov  1 08:27:59 2020 So as implied there can't we flush the
+mapping step between objid and tag color?  If we're assuming a
+reasonable finite non-churning demand for objids, why not?
+
+Let's just go from scratch here.  HitmappedJPanel, manifest!
+[8:
+
+Sun Nov  1 08:42:37 2020 Do we really need a separate Graphics2D
+abstraction like VOGraphics2D?  The challenge is how best to switch
+getFg and getBg behaviors when drawing to the hitmap vs 'reality'.
+How else would we get the information about our drawing context?
+
+A minimal FOGraphics would contain a Graphics2D plus like a boolean?
+
+[9:
+
+Sun Nov  1 09:19:50 2020 But if we associate getFg and Bg with the FO
+-- which we do -- then the switching occurs on that side, and "there's
+no reason not to" just let the paintComponent(G2D) calls fly
+willy-nilly.  Right?  Let's try that.
+[10:
+
+Sun Nov  1 09:29:47 2020 No wait doh.  Part of the point of this
+exercise is that we are NOT using Swing objects for every last box and
+line.  Instead we are using our own FO abstraction.  So there are no
+actual Swing children under a HitmappedJPanel, for purposes of
+hyperspace objects and stuff.
+
+So we CAN'T just let paintComponent calls fly because they have
+nowhere to go, and we HAVE to have our own drawing abstraction to
+apply at the FO level.  We can still pass a Graphics2D if we want, but
+we're passing it through FO.draw() calls of some kind.
+
+Right now we have FO.draw(HyperspaceRenderer hr) so let's stick with
+that.
+
+Aaand, for now we're saying FOs do NOT have children?  It seems that's
+what we were trying to say anyway.  That was already being a pain..
+Suppose we just supported (x,y) offsets, with no rotation and no
+scaling?[11:
+
+Sun Nov  1 09:52:54 2020 But of course, the instance we say allow
+kids, we're looking at all the issues of iterating over lists that
+might change during updates and so on.  Well we can try to start by
+saying no changes after start-up or whatever, and see how far that
+gets us.[12:
+
+Sun Nov  1 12:31:23 2020 So, what's the interface for colors, again?
+We want the FOs to have it as natural as possible.. So, we give them
+get|set.Bg|Fg with the contract that those are always the 'real'
+colors.  But then we have HyperspaceRenderer.getBackground(FO) and
+getForeground(FO), that maybe dishes to getBg/Fg, and maybe does the
+hitmap trick?[13:
+
+Mon Nov  2 11:43:03 2020 OK so, well, finally made some progress.
+Have a plausible hitmap (and can right-click on the
+HyperspaceInteractionPanel to see it), and can left click on the panel
+and determine what FO if any is at that location.
+
+I say 'location', rather than 'pixel', because I have no fogging idea
+what java is doing with respect to actual pixels on the screen.  For
+example, spike13 is current displaying on the 4K laptop screen -- and
+xwininfo says that window is 3840x2068 -- but Java's GraphicsDevice
+and GraphicsConfiguration stuff says it's 1280x720.  And the reported
+x and y positions in MouseEvents agree, based on clicking around in
+the lower right corner.
+
+:13]
+
+:12]
+
+:11]
+
+:10]
+:9]
+
+:8]
+  :7]
+:6]
+
+:5]
+
+:4]
+
+:3]
+
+:2]
+:1]
+[14:
+
+Mon Nov  2 16:14:00 2020 So c/ ->
+
+TODO
+
+ - Make HIP be as standalone as possible:
+
+[15: Tue Nov  3 02:01:28 2020 Made Finite2DSpace
+DONE :15]   = Make a Diagram interface?  SpatialDiagram?  Space?
+[16:
+DONE  :16]   = Add FiniteSpace2D FO.getSpace()
+[17: mostly
+DONE  :17]   = Add FO FiniteSpace2D.getFOIfAny(Point2D at) (using hitmap)
+[18: Already
+DONE  :18]   = Add Iterator<FO> FO.getKids()
+[19: Already not
+DONE  :19]   = Remove scale from FO.
+
+:14]
+[20:
+
+Tue Nov  3 02:48:08 2020 OK, so how do we integrate our new
+Finite2DSpace with a JPanel for drawing?  We can't extend
+both JPanel and StandardFinite2DSpace.[21:
+
+Tue Nov  3 10:38:38 2020 Let's extend JPanel.  Start a fresh
+class.. just call it HIP for now.[23:
+
+Tue Nov  3 13:38:13 2020 Aaand great.  Just getting to try running and
+the "can't inherit so just delegate to data member" is already biting
+my butt: The problem is the AFOs need to store a pointer to their
+space, so they know where to look themselves up.
+
+When we created them we gave them our 'fake delegated' HIP
+implementation of Finite2DSpace, so that's what they've got in there,
+but the actual code in StandardFinite2DSpace does:
+
+    if (idx != 0 || fo.getSpace() != this)
+	throw new IllegalStateException();
+
+to ensure that someone isn't trying to look up a FO in the wrong
+space.  And that code is blowing up because fo.getSpace() returns a
+HIP, while 'this' is not even that class let alone the same object.
+Because it's a StandardFinite2DSpace data member inside HIP..
+
+If we had let HIP extend StandardFinite2DSpace, that would have
+worked.... [24:
+
+Tue Nov  3 13:45:46 2020 Well, this is the work we're doing today.
+Let's do that and see where the pain moves.[25:
+
+Tue Nov  3 14:42:23 2020 Well the overall pain so far seems less.  We
+don't have the diagram appearing yet, but that looks to be because
+we're missing an actual configuration step for the diagram.  How do we
+want that to work?
+
+We'll probably end up supporting dragging and zooming at the panel
+level, so this configuration is really just a default starting point
+-- and we'll want a return-to-default keyboard cmd eventually.
+
+So say we want a BitVectorH to span.. wait.  Aren't we supposed to be
+talking about configuring a Finite2DSpace into a JPanel?  The idea was
+the Finite2DSpace is laid out (pretty much once and for all) to
+whatever values make sense for the function, and then have
+'configure(Rectangle2D)' come up with a single AffineTransform to map
+that to the panel bounds.  And everything in the diagram is done
+relatively to the Finite2DSpace (up to mouse hits and such).
+
+[26:
+
+Tue Nov  3 16:40:17 2020 So now we have a bitvector appearing in our
+new structure.  Issues:
+
+ - We've lost the black background
+
+ - The bitvector is aligned upper left but we thought it was going to
+   be centeredish (actually as I type this I think I understand why.)
+
+ - All the bitboxes appear to be tied to a single 'alternate' bitbox
+   value. 
+[27:
+
+Thu Nov  5 01:08:45 2020 Well, lost a day and a half or so failing to
+decide the outcome of the USA presidential election.  But here we are
+again finally.
+
+We had made progress with our final AffineTransform mapping the
+Finite2DSpace into a JPanel, and that's where we pick up now.  Let's
+deal with getting the bitvector centered in the panel first.
+
+That involves computing that AT..[28:
+
+Thu Nov  5 01:13:56 2020 Which happens, in the current instance, in
+HIPSpike10.configureDiagram().
+
+We have 'spacebounds' -- the Rect2D of our Finite2DSpace -- and
+'panelbounds' -- the Rect2D of our JPanel.  I think the current issue
+is we are currently aligning the CENTERS of those two bounds, when we
+were intending to align their ORIGINS.
+
+We start with at AT that translates by (-spacectrx,-spacectry), then
+scale it by a ratio, then translate by (panelctrx,panelctry).
+
+[29:
+
+Thu Nov  5 01:37:21 2020 OK so we have the alternatives lined up with
+their bits.  But the center of the first bitbox is aligned with the
+origin of the panel, which isn't what we want.[30:
+
+Thu Nov  5 01:50:51 2020 OK, at the moment HIPSpike10 is returning the
+BitVectorH itself as the diagram, but that makes it hard to add, say,
+a VRuler to the diagram.  We want some other thing to be the root, and
+start using FO.getKids() and stuff.
+
+Well, let's just do it.  Presumably we want the bitbox alternatives to
+be kids of the bitbox, and the bitboxes to be kids of the bitvector,
+but we don't actually have any of that, as yet, gah.[31:
+
+Thu Nov  5 01:59:07 2020 So, AFO.addChild() implies parent pointers,
+too, right?  Guess so..[32:
+
+Thu Nov  5 02:03:56 2020 I'm really not sure about this.  We might not
+want general kids and parents.  We might prefer just specific one-off
+structures that may have substructure but if so they know how to deal
+with and paint it themselves.  Then this missing 'DiagramRoot' thing
+would explicitly have like an 'VRuler mRuler' data member or whatever,
+that would draw in the prevailing 'global' coordinates, rather than
+getting automatically remapped.
+
+But the container/parent relationship is then hard, right?  We want to
+be able to put BitBoxes in many different things.. So each container
+has to offer a search function or something to find any given
+contained FO among all its relevant data members?
+
+We expect to want container/parent access during hitmap processing if
+nothing else, since the hitmap gives us the deepest items drawn to any
+given pixel.[33:
+
+Thu Nov  5 03:56:14 2020 Well, fell off into 'doomscrolling' there.
+I'm thinking let's try the 'no generalized children' idea, and see if
+it gives us enough more control to feel worthwhile..[34:
+
+Thu Nov  5 09:13:28 2020 Up.  I guess we could have an 'independent
+distributor' kind of FO subclass that would supply children, and use
+that as the root of a (multiFO) diagram or whatever, while still
+being able to do custom kids in different data members when we do have
+more structure to work with.  A Collector or something.
+
+We could have FO.getParent() but NOT getChildren(), hmm.  You navigate
+down inside specific methods -- like drawFO() (and updateFO(), once we
+get to animation) -- but you can navigate back up programmatically.
+
+Let's try it.[35:
+
+Thu Nov  5 10:58:51 2020 OK, getting little bits of a VRuler up.  I'd
+like to get the background back to black, though; let's take a look at
+that.  Who should be making that happen?  The thing representing the
+whole diagram in a jpanel.
+[36:
+
+Thu Nov  5 11:16:06 2020 OK so does each FO drawn have to set its own
+global position wrt the diagram coordinates or not?  We're looking at
+why the bitbox alternatives are all piled on top of their bases.
+Maybe we want to get rid of the BitBox.mOffsetAlternative member?
+Maybe yeah.  Maybe we should be just setting the AFO x,y and be done
+with it.[37:
+
+Thu Nov  5 12:02:20 2020 OK, we have the alts distributing plausibly.
+And I'm liking just using AFO.setY(functionvalue) to place the alts.
+Feels solid.
+
+So let's make a slightly realer function for our bitvector here, and
+let the bv and its alts fall where they really should accordingly.
+
+I've been leaning toward starting with 'bit vector match' as the first
+function.  Then moving toward matching multiple different bit vectors
+as best as possible.
+
+It's getting to be time to move the flag but building stuff for a
+MultiBVMatchFunction seems like a 'path to victory' hmm why did I say
+it that way?
+
+But how about that non-black background?  Round off here by fixing
+that?[38:
+
+Thu Nov  5 12:28:56 2020 OK fixed that -- the JPanel data member of HIP
+wasn't getting its colors configured.  Let's push this stuff for
+safety.
+
+:38]
+
+:37]
+
+:36]
+
+:35]
+
+:34]
+
+:33]
+
+:32]
+
+:31]
+
+:30]
+
+:29]
+:28]
+
+:27]
+:26]
+
+:25]
+
+:24]
+
+
+
+:23][22:
+
+Tue Nov  3 10:50:01 2020 Let's make it AbstractHIP and add stubs for
+subclasses to define the (hyperspace) content.  Let's see, via:
+
+ - FO buildDiagram() ; // Returning mRoot ?
+
+ - void configureDiagram(Rectangle2D bounds) ; // (re)configure if bounds change
+
+
+:22]
+
+:21]
+
+:20]
