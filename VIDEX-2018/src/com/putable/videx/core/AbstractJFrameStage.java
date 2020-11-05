@@ -45,8 +45,23 @@ public abstract class AbstractJFrameStage extends JFrame implements Stage {
     public StagePanel getStagePanel() { return mStagePanel; }
     
     private void initGraphicsDevice() {
-        mGraphicsDevice = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice();
+        GraphicsEnvironment g = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice[] devices = g.getScreenDevices();
+        int maxh=0,maxidx=0;
+
+        for (int i = 0; i < devices.length; ++i) {
+            int h = devices[i].getDisplayMode().getHeight();
+            int w = devices[i].getDisplayMode().getWidth();
+            System.out.println(i+" h="+h+" w="+w);
+            if (h >= maxh) {
+                maxidx = i;
+                maxh = h;
+            }
+        }
+        maxidx = 1; // For loop doesn't work?!
+        System.out.println("Choosing graphics device "+maxidx);
+        mGraphicsDevice = devices[maxidx];
+
         if (this.mConfig.wantFullScreen() &&
                 mGraphicsDevice.isFullScreenSupported()) { // Go for full-screen mode
             this.setUndecorated(true);         // Don't show title and border
