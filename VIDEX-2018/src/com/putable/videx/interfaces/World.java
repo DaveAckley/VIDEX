@@ -1,7 +1,6 @@
 package com.putable.videx.interfaces;
 
 import com.putable.videx.core.SXRandom;
-
 /**
  * A World is the object built from a Configuration
  * 

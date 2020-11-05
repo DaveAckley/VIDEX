@@ -25,22 +25,23 @@ public class OIOLoadDriver2020 {
         String basedir = args[0];
         StandardUniverse universe = new StandardUniverse();
         try {    
+            final double PRESENTER_SCALE = 0.4;
+            mNotesConfiguration = 
+                    new OIOLoadConfiguration(basedir,"PRESENTER",
+                            false,
+                            // THIS MESSES UP SIZES ON MAIN!  new Point2D.Double(PRESENTER_SCALE,-PRESENTER_SCALE),
+                            new Point2D.Double(1,1),
+                            new Rectangle2D.Double(5760,38,1024,768-38));
+            mNotesWorld = mNotesConfiguration.buildWorld(mNotesConfiguration);
             mConfiguration = 
                     new OIOLoadConfiguration(basedir,"MAIN",
                             true,
-                            new Point2D.Double(1,1),
+                            new Point2D.Double(1.,1.),
                             new Rectangle2D.Double(0,0,1920*2,1080*2));
             mWorld = mConfiguration.buildWorld(mConfiguration);
             if (mWorld==null)
                 throw new Exception("World construction failed");
             universe.addWorld(mWorld);
-            final double PRESENTER_SCALE = 0.4;
-            mNotesConfiguration = 
-                    new OIOLoadConfiguration(basedir,"PRESENTER",
-                            false,
-                            new Point2D.Double(PRESENTER_SCALE,-PRESENTER_SCALE),
-                            new Rectangle2D.Double(5760,38,1024,768-38));
-            mNotesWorld = mNotesConfiguration.buildWorld(mNotesConfiguration);
             universe.addWorld(mNotesWorld);
             new Thread(new Runnable() {
 
