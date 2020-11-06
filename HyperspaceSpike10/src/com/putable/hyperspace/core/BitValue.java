@@ -12,7 +12,7 @@ public enum BitValue {
 
 		@Override
 		public Color getBorder() {
-			return Color.decode("#cccccc");
+			return Color.decode("#555555");
 		}
 
 		@Override

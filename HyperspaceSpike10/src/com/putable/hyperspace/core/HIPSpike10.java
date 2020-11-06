@@ -54,7 +54,7 @@ public class HIPSpike10 extends HIP {
 		double pheight= panelbounds.getHeight();
 		double s2pwratio = swidth/pwidth;
 		double s2phratio = sheight/pheight;
-		double minratio = Math.min(s2pwratio, s2phratio);
+		double minratio = Math.max(s2pwratio, s2phratio);
 		AffineTransform at = AffineTransform.getTranslateInstance(-sxctr, -syctr);
 		at.scale(1/minratio, 1/minratio);
 		at.translate(pxctr, pyctr);

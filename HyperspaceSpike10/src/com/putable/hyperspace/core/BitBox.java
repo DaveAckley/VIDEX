@@ -16,7 +16,7 @@ import com.putable.hyperspace.interfaces.Finite2DSpace;
  *
  */
 public class BitBox extends AFO {
-	private int mBorder = 20_000;
+	private int mBorder = 40_000;
 	private BitBox mAlternative = null;
 	public Point2D getCenter(Point2D p) {
 		if (p == null) p = new Point2D.Double();
@@ -99,9 +99,9 @@ public class BitBox extends AFO {
 		g2d.setRenderingHints(rh);
 		
 		Shape clear= new Rectangle2D.Double(getMinX(), getMinY(), getWidth(), getHeight());
-/*		Shape fill = new Rectangle2D.Double(getMinX()+mBorder/2, getMinY()+mBorder/2, 
+		Shape fill = new Rectangle2D.Double(getMinX()+mBorder/2, getMinY()+mBorder/2, 
 				getWidth()-mBorder,  getHeight()-mBorder);
-*/		Shape fill = clear;
+//		Shape fill = clear;
 
 
 		if (mAlternative != null) {
@@ -111,10 +111,10 @@ public class BitBox extends AFO {
 			Shape line = new Line2D.Double(us,them);
 			g2d.draw(line);
 		}
+		g2d.setPaint(hr.getBg(this));
+		g2d.fill(clear);
 		g2d.setPaint(hr.getFg(this));
 		g2d.fill(fill);
-		g2d.setPaint(hr.getBg(this));
-		g2d.draw(clear);
 		if (mAlternative != null)
 			mAlternative.draw(hr);
 
