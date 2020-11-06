@@ -13,7 +13,7 @@ import java.awt.event.KeyListener;
 import javax.swing.JFrame;
 
 public class Spike14 {
-	private static final int DESIRED_SCREEN = 0;
+	private static final int DESIRED_SCREEN = 1;
 	private static class SpikeFrame extends JFrame implements KeyListener {
 		public SpikeFrame(String s) {
 			super(s);
