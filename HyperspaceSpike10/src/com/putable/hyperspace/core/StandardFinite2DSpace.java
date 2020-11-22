@@ -1,6 +1,5 @@
 package com.putable.hyperspace.core;
 
-import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,7 +9,6 @@ import com.putable.hyperspace.interfaces.Finite2DSpace;
 public class StandardFinite2DSpace implements Finite2DSpace {
 	private Rectangle2D mBounds = new Rectangle2D.Double(0, 0, 1, 1);
 	private FO mFORoot;
-	private FOHitmap mHitmap;
 
 	private int mAFOHitmapNextIndex = 0x000002;
 	private final int AFO_MAP_INCREMENT = 0x1234;
@@ -43,11 +41,6 @@ public class StandardFinite2DSpace implements Finite2DSpace {
 	}
 
 	@Override
-	public FO getFOIfAny(Point2D at) {
-		return mHitmap.getFOAtPixelIfAny((int) at.getX(), (int) at.getY());
-	}
-
-	@Override
 	public FO getRoot() {
 		return mFORoot;
 	}
@@ -65,6 +58,22 @@ public class StandardFinite2DSpace implements Finite2DSpace {
 	@Override
 	public void draw(HyperspaceRenderer hr) {
 		this.getRoot().draw(hr);
+		/*
+		StandardHyperspaceRenderer sh = (StandardHyperspaceRenderer) hr;
+		Graphics2D orig = hr.getGraphics2D();
+
+		sh.setIsInHitmap(true);
+		this.getRoot().draw(hr);
+
+		sh.setG2d(this.mHitmap.getGraphics2D());
+		sh.setIsInHitmap(true);
+		this.getRoot().draw(hr);
+
+		sh.setIsInHitmap(false);
+		sh.setG2d(orig);
+		
+		this.mHitmap.paintImage(orig);
+*/
 	}
 
 }

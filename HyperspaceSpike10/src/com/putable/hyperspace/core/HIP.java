@@ -1,16 +1,19 @@
 package com.putable.hyperspace.core;
 
 import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
+import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.util.Iterator;
 
-import javax.swing.JPanel;
+import javax.swing.Timer;
 
 public abstract class HIP extends StandardFinite2DSpace  {
 	/// SUBCLASS REQUIREMENTS
@@ -27,8 +30,9 @@ public abstract class HIP extends StandardFinite2DSpace  {
 	 * (re)Produce a transform to map the diagram to the given bounds
 	 * @param bounds new origin and size of the drawing panel
 	 */
-	public abstract AffineTransform configureDiagram(Rectangle2D bounds) ;
+	public abstract AffineTransform configureDiagram(Rectangle2D boundsupdate) ;
 	private AffineTransform mSpaceToPanel = null;
+	public AffineTransform getSpaceToPanel() { return mSpaceToPanel; }
 	
 	public void configure(Rectangle2D panelbounds) {
 		if (this.getRoot() == null) {
@@ -37,75 +41,79 @@ public abstract class HIP extends StandardFinite2DSpace  {
 		}
 		mSpaceToPanel = configureDiagram(panelbounds);
 	}
-	public JPanel getJPanel() { return mPanel; }
+	public HIPJPanel getJPanel() { return mPanel; }
+	public void setOurPreferredSize(Dimension d) {
+		this.getJPanel().setOurPreferredSize(d);
+	}
+	private HIPJPanel mPanel = new HIPJPanel(this);
+	//private AffineTransform mLastAT = null;
 
-	private JPanel mPanel = new JPanel() {
+	public boolean dispatchKeyEvent(KeyEvent e) {
+		HIP hip = HIP.this;
+        FO fo = hip.mPanel.getFOIfAny(mLastMousePosition);
+        if (fo != null) {
+        	FOEventKey foek = new FOEventKey(e, mLastMousePosition);
+        	while (!fo.handle(foek)) {
+        		fo = fo.getParent();
+        		if (fo == null) return false;
+        	}
+        	return true;
+        }
+        return false;
+	}
 
-		private static final long serialVersionUID = 1L;
-
+	private int mStepCount= 0;
+	public int getStepCount() { return mStepCount; }
+	
+	/// HANDLE KEYBOARD EVENTS
+	private class KeyListener extends KeyAdapter {
 		@Override
-		public void paintComponent(Graphics g) {
-			super.paintComponent(g);
-			HIP hip = HIP.this;
-			Graphics2D g2d = (Graphics2D) g;
-			AffineTransform old = g2d.getTransform();
-			g2d.setTransform(hip.mSpaceToPanel);
-
-			mSHR.setG2d(g2d);
-			mSHR.setIsInHitmap(false);
-			hip.draw(mSHR);
-
-			g2d.fill3DRect(1000, 600, 30, 40, true);
-			/*			mSHR.setG2d(this.mHitmap.getGraphics2D());
-			this.mHitmap.getGraphics2D().setColor(Color.green);
-			this.mHitmap.getGraphics2D().fillRect(0, 0, 2000, 2000);
-			mSHR.setIsInHitmap(true);
-			this.paintFOs();
-			
-			if (this.mShowHitmap) 
-				this.mHitmap.paintImage(g2d);
-	*/
-			g2d.setTransform(old);
+		public void keyPressed(KeyEvent e) {
+			HIP.this.dispatchKeyEvent(e);
 		}
-	};
-	private AffineTransform mLastAT = null;
+		@Override
+		public void keyTyped(KeyEvent e) {
+			HIP.this.dispatchKeyEvent(e);
+		}
+		@Override
+		public void keyReleased(KeyEvent e) {
+			HIP.this.dispatchKeyEvent(e);
+		}
+	}
+	private Point2D mLastMousePosition = new Point2D.Double();
+	private KeyListener mKeyListener = new KeyListener();
 	
 	/// HANDLE MOUSE EVENTS	
 	private class MouseListener extends MouseAdapter {
 		private Point2D mDragStart;
-	    @Override
-	    public void mousePressed(MouseEvent e) {
-	    	HIP hip = HIP.this;
-	    	JPanel jp = hip.mPanel;
+		
+		@Override
+		public void mouseMoved(MouseEvent e) {
 	    	int x = e.getX();
 	        int y = e.getY();
-	        Point2D pt = new Point2D.Double(x, y);
-	        Graphics2D lastG2d = hip.mSHR.getG2d();
-	        if (hip.mLastAT != null) {
-	        	try {
-	        		hip.mLastAT.inverseTransform(pt, pt);
-	        	}
-	        	catch (NoninvertibleTransformException e1) {
-	        	}
-	        }
-	        System.out.println("AT "+x+", "+y+" -> "+ pt);
-	        /*
+	        mLastMousePosition.setLocation(x, y);
+		}
+		@Override
+	    public void mousePressed(MouseEvent e) {
+	    	HIP hip = HIP.this;
+	    	HIPJPanel jp = hip.mPanel;
+	    	int x = e.getX();
+	        int y = e.getY();
+	        mLastMousePosition.setLocation(x, y);
+
 	        if (e.getButton() == 3) {
-	        	hip.setShowHitmap(true);
+	        	jp.setShowHitmap(true);
 	        	return;
 	        }
-	         */	
-	        FO fo = hip.getFOIfAny(new Point2D.Double(x,y));
-	        if (fo != null)
-		        System.out.println("HIT "+fo+" ("+x+", "+y+")");
+
 	        mDragStart = new Point2D.Double(x, y);
 	        System.out.println("DRAG START "+x+", "+y);
 	    }
 	    @Override
 	    public void mouseDragged(MouseEvent e) {
-	    	HIP hip = HIP.this;
 	        int x = e.getX();
 	        int y = e.getY();
+	        mLastMousePosition.setLocation(x, y);
 	        if (mDragStart == null) return;
 	        double dx = x - mDragStart.getX();
 	        double dy = y - mDragStart.getY();
@@ -117,29 +125,102 @@ public abstract class HIP extends StandardFinite2DSpace  {
 	    	HIP hip = HIP.this;
 	        int x = e.getX();
 	        int y = e.getY();
-	        /*
+	        mLastMousePosition.setLocation(x, y);
 	        if (e.getButton() == 3) {
-	        	hip.setShowHitmap(false);
+	        	hip.mPanel.setShowHitmap(false);
 	        	return;
 	        }
-	        */
+
 	        if (mDragStart == null) return;
 	        double dx = x - mDragStart.getX();
 	        double dy = y - mDragStart.getY();
 	        System.out.println("DELTA DROP "+dx+", "+dy);
 	        mDragStart = null;
+
+	        Point2D at = new Point2D.Double(x,y);
+	        FO fo = hip.mPanel.getFOIfAny(at);
+	        if (fo != null) {
+		        System.out.println("RELEASE "+fo+" ("+x+", "+y+")");
+		        FOEventClick foec = new FOEventClick(e.getButton(), at);
+		        fo.handle(foec);
+	        }
 	    }
 	}
 	private MouseListener mMouseListener = new MouseListener();
 
 	/// DRAWING
-	private StandardHyperspaceRenderer mSHR = new StandardHyperspaceRenderer();
+	StandardHyperspaceRenderer mSHR = new StandardHyperspaceRenderer();
 
-	private static final long serialVersionUID = 1L;
+	//// UPDATING
+	private final Timer mUpdateTimer;
+	private final ActionListener mUpdateTask = new ActionListener() {
 
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if (HIP.this.mPanel.isShowing())
+				HIP.this.cycle();
+		}
+		
+	};
+
+	private abstract class FOOp {
+		protected final HIP mHIP;
+		public FOOp(HIP hip) {
+			mHIP = hip;
+		}
+		public abstract void op(FO fo) ;
+	}
+	private FOOp mTransformOp = new FOOp(this) {
+		@Override
+		public void op(FO fo) { fo.transform(mHIP);	}
+	};
+	private FOOp mStepOp = new FOOp(this) {
+		@Override
+		public void op(FO fo) { 
+			fo.step(mHIP);	
+		}
+	};
+	private void doTree(FO fo, FOOp fop) {
+		fop.op(fo);
+		for (Iterator<FO> itr = fo.kids(); itr.hasNext(); ) {
+			FO kid = itr.next();
+			doTree(kid,fop);
+		}
+	}
+	private void doTransform() {// Derive body positions, colors, etc
+		doTree(this.getRoot(),mTransformOp);  
+	}
+	private void doStep() { // Take actions
+		doTree(this.getRoot(),mStepOp);
+		
+	}
+	private void doDraw() { // Draw them
+		this.getJPanel().repaint();
+		
+	}
+	private void cycle() {
+		FO root = this.getRoot();
+		if (root == null) {
+			System.out.println("HIP.cycle no root");
+			return;
+		}
+		doTransform();
+		doStep();
+		doDraw();
+		++this.mStepCount;
+	}
+	
 	/// CTOR
 	public HIP() {
 		mPanel.setBackground(Color.black);
 		mPanel.setForeground(Color.white);
+		mPanel.addMouseListener(mMouseListener);
+		mPanel.addMouseMotionListener(mMouseListener);
+		mPanel.addKeyListener(mKeyListener);
+		mPanel.setFocusable(true);
+		mPanel.setFocusTraversalKeysEnabled(false);
+		mPanel.requestFocusInWindow();
+		mUpdateTimer = new Timer(100,mUpdateTask);
+		mUpdateTimer.start();
 	}
 }

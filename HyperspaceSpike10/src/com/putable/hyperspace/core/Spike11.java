@@ -1,7 +1,5 @@
 package com.putable.hyperspace.core;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -12,17 +10,14 @@ import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class Spike11 extends JPanel {
 	public static final double MAX_X = 16_000_000;
 	public static final double MAX_Y =  9_000_000;
 	public static final int DESIRED_SCREEN = 1;
-	private JLabel mMemo;
 	private Dimension mWindowSize;
 	private double mScale = -1;
 	private List<FO> mFOs = new LinkedList<FO>();

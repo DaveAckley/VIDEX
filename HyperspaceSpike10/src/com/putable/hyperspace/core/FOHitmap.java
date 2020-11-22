@@ -2,6 +2,7 @@ package com.putable.hyperspace.core;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 
 import com.putable.hyperspace.interfaces.Finite2DSpace;
@@ -14,8 +15,12 @@ public class FOHitmap {
     private Graphics2D mHitmapGraphics;
     private boolean mHitmapValid = false;
 
+    public int getHitmapWidth() { return mHitmapWidth; }
+    public int getHitmapHeight() { return mHitmapHeight; }
+    
     public void paintImage(Graphics2D g2d) {
-    	g2d.drawImage(mHitmapImage, null, 0, 0);
+    	Rectangle2D rect = mF2D.getBounds();
+    	g2d.drawImage(mHitmapImage, null, (int) (rect.getMinX()), (int) (5+rect.getMinY()));
     }
     
     public FOHitmap(Finite2DSpace space, int width, int height) {
@@ -26,8 +31,8 @@ public class FOHitmap {
     public void resizeHitmap(int width, int height) {
         if (width <= 0 || height <= 0)
             throw new IllegalArgumentException("Dimensions must be positive");
-        mHitmapWidth = 1920;
-        mHitmapHeight = 1080;
+        mHitmapWidth = width;
+        mHitmapHeight = height;
         mHitmapImage = new BufferedImage(mHitmapWidth, mHitmapHeight,
                 BufferedImage.TYPE_INT_ARGB);
         mHitmapGraphics = mHitmapImage.createGraphics();
@@ -51,7 +56,7 @@ public class FOHitmap {
     }
     
     public void clear() {
-    	mHitmapGraphics.setColor(Color.blue);
+    	mHitmapGraphics.setColor(new Color(250,200,200));
     	mHitmapGraphics.fillRect(0, 0, mHitmapWidth, mHitmapHeight);
     }
 

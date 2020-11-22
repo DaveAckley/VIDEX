@@ -1,0 +1,754 @@
+{57}  -*- text -*-
+[0:
+
+Fri Nov  6 16:12:24 2020 Testing eclipse refresh on files modified
+externally via emacs..
+
+:0][1:
+
+Fri Nov  6 16:13:42 2020 So what I'm thinking about now is that I
+should byte the bullet and redo everything into FO-land around
+doubles instead of big ints.
+
+I always preferred ints for pixel accuracy at the bottom of
+everything, but that seems nearly completely moot at this point, with
+this crazy high-DPI crap plus us just admitting there's going to be a
+final AffineTransform before everything hits the screen anyway.
+
+And given that big ints are appearing to cause bad if not flat-out
+buggy behavior from things like fonts and drawString, there's some
+actual pressure to make this move.
+
+Let's try it, with the goal of getting to a fine-grained like +-100
+space, rather than the +-1_000_000 that we have now..
+[2:
+
+Fri Nov  6 16:49:33 2020 OK, well did an initial conversion, but now
+everything's vanished off the screen somewhere, so that has to be dug
+through.  But it's time to cook for stirfryday.
+[3:
+
+Sat Nov  7 02:38:41 2020 OK get this going go go go.  I want to see
+animation before cocktails this evening go go go go go.
+
+:3]
+
+:2]
+:1]
+[4:
+
+Sat Nov  7 02:39:30 2020 OK, so it's saying the target JPanel
+(panelbounds) is
+
+    java.awt.Rectangle[x=0,y=0,width=3840,height=2160]
+
+which seems right.  And our sample function space (spacebounds) is
+
+    java.awt.geom.Rectangle2D$Double[x=-20.0,y=-20.0,w=100.0,h=100.0]
+
+which also seems right..
+
+So if we map some space points to panel points by hand, we should get
+like:
+
+ (-20,-20)  ->   (0,0)
+ ( 80, 80)  ->   ..need the scale factor..
+
+And the intent is to scale so the function space maintains its aspect
+ratio while being as large as possible within the panel window.  (And
+is upper-left justified within the panel.)
+
+So (3840,2160)/100.0 = (38.40,21.60).  So we scale by 21.60 and leave
+unused space on the right.
+
+So our overall formula is
+
+   ((sx,sy)-(-20,-20))*21.60)+(0,0)
+
+thus
+
+   ((80,80)-(-20,-20))*21.60)+(0,0)
+   ((100,100)*21.60)+(0,0)
+   (2160,2160)+(0,0)
+   (2160,2160)
+
+And so on.  Now AffineTransforms compose backwards, right?  So we
+should start with the panel origin.. But that's always going to be
+(0,0), no?  Then scale.
+
+[5:
+
+Sat Nov  7 03:16:35 2020 OK, getting there.  Now let's get the VRuler
+positioned and sized plausibly, then think about converting to a
+bitvector match sample function say in Spike15.
+
+Again, our current function space layout is -20,-20+100+100[6:
+
+Sat Nov  7 03:54:19 2020 So, what is our current desire for the
+drawing of the 'alt' bitvalue?  We've got the 'side' and the 'border'
+for the main bit value (aligned in the bitvector axis), and then we're
+using BitVectorH.mAltScale to scale down the side (and implicitly the
+border) of the BitBox.mAlternative.
+
+The problem is, if the border is bigger than about 1/16th of the side,
+then there's too much padding around the full-size bitvalues in the
+bitvector, and it looks ugly, but if the border is smaller than about
+1/10th of the side, then some of the borders in the alts disappears
+completely, apparently due to rounding to ultimately integer pixels.
+
+So that kind of suggests we should have the border _not_ scale with
+the side, so that the main bitvalue and the alt could have the same
+border even though their sides differ.  Maybe pass in the border as
+yet another ctor arg?[7:
+
+Sat Nov  7 04:11:18 2020 OK now we're kind of letting BitVectorH own
+the border size, and both the main and the alt are using the same
+border size, and everything currently looks okay at border=side/20.
+
+Now vruler pos..[8:
+
+Sat Nov  7 05:58:41 2020 Actually let's do a matching function thing,
+and let 'real' function values drive the vruler tweaking.
+
+:8]
+
+:7]
+
+:6]
+
+:5]
+
+:4]
+[9:
+
+Sat Nov  7 15:05:12 2020 OK we got burned by the non-nested flat-space
+model -- thought that calling BitVectorH.setY() would move its
+contained BitBoxes, but it doesn't..
+
+So we have to override setY() and pass it down to all the BitBoxes?
+And they in turn have to modify it and pass it to their alternative?
+Kind of seems like..  Urgh.[10:
+
+Sun Nov  8 06:45:10 2020 So there's kind of a basic issue coming up
+now that the mapping to the screen layout is getting fairly solid: I
+can't scale the Y axis differently than the X axis without blowing my
+bits off-square.  So I'm like multiplying my function by N for no
+reason other than to stretch the diagram vertically.  At one point I
+was making a mYScale data member somewhere, but it was never threaded
+into anything I don't think.  Is it worth trying to do it?[11:
+
+Sun Nov  8 07:23:03 2020 So, except for one problem, I can fix this,
+without differential scaling, just by reducing the BitBox side,
+causing the final overall scaling to be larger and thus stretching the
+Y axis as well.  The problem is I don't know how to specify a non-int
+font size, so there's a nasty granularity problem there.[12:
+
+Sun Nov  8 07:31:01 2020 Perhaps I can just start with size 1 and then
+use deriveFont(AffineTransform at) to scale it arbitrarily?[13:
+
+Sun Nov  8 07:57:37 2020 Looks like I can.
+
+:13]
+
+:12]
+
+:11]
+
+:10]
+
+:9]
+[14:
+
+Sun Nov  8 16:04:14 2020 So now the issue is we have no way to
+navigate from an alternative to the BitBox we are an alternative to.
+So when we get a click on it it's hard to know what to do.
+
+But is that right?  Don't we have a parent link we're not really using
+yet? [15:
+
+Sun Nov  8 16:45:38 2020 OK, now routing through FO.getParent(), and
+have added void FO.refresh() to notify up to the root that something
+may have changed.
+
+And we now have click-to-flip working on our first bitvector function.
+
+:15]
+
+:14]
+[16:
+
+Mon Nov  9 07:23:43 2020 OK let's get a way to selectively enable and
+disable FOs, for display purposes at least, so we can start
+introducing our viz incrementally.
+
+Also it's way past time to get a timer and an update cycle running.
+
+:16]
+[17:
+
+Tue Nov 10 15:57:02 2020 OK current little aggravation is I'm having
+trouble getting my Collector FO -- which is sitting at the root of the
+diagram providing children and handlers -- fill the entire panel, so
+that we have reliable mouse hits anywhere on the background.
+
+The problem is it's hard to get access to that actual underlying
+JPanel to ask it its size.  Or even just to our FOHitmap for the
+JPanel, which you'd really think we ought to be able to reach..  Could
+we add a getBounds() to HyperspaceRenderer or something?  Or
+getPanelBounds() or something?  The real issue is the size of the
+JPanel is in panel space, but we're FO.draw(..)ing in function space,
+so we'd have to run the panel bounds backward through the final AT to
+find its projection into function space.
+
+:17]
+[18:
+
+Wed Nov 11 14:02:28 2020 Well we hacked the JPanel size issue with
+'appropriately chosen constants' ugh.
+
+Now we've been working on getting smoother transitions when things
+change in the display, because when the stuff is jumping around it's
+hard to see the intended continuity.  We've made 'UFO' -- an
+'Updateable FO' -- that is meant to capture changes to visible
+properties and 'smoothly' interpolate between them in something like
+the SOSI manner.
+
+So far we're fading in the foreground color of the VRuler when it
+becomes active, and that works okay -- but fading out on inactive
+doesn't work because we don't have fractional booleans (!) and the
+VRuler becomes inactive immediately -- so it doesn't get drawn, so it
+vanishes immediately even though the foreground color is still
+changing.
+[19:
+
+Wed Nov 11 15:03:42 2020 Do we dare think about trying some deliberate
+asymmetries?  Like activation happens on the first SOSI step, but
+deactivation happens on the last?
+
+We also have issues with the bitbox alts not really redrawing
+themselves properly.  At least not spontaneously.  Should maybe think
+about understanding that before getting whackier on the update stuff,
+I think.[20:
+
+Wed Nov 11 16:34:09 2020 It's because they're not refreshing
+properly.  If we're going to have any shot at getting this right,
+we're going to need to
+
+ - Get serious about some kind of update / refresh / draw phases
+
+ - Lift the children to FO, not just the parents, so we can drive
+   phases down the tree without having to add more and more overrides
+   in every class with kids.
+
+:20]
+
+:19]
+
+:18]
+[21:
+
+Thu Nov 12 00:34:10 2020 In VO world we do this on a javax Timer:
+ ..
+    public void actionPerformed(ActionEvent arg0) {
+        if (mThreadRunning) {
+            for (Stage s : this) s.transformStage(this);
+            for (Stage s : this) s.paintStage(this);
+            for (Stage s : this) s.updateStage(this);
+ ..
+    }
+
+where transformStage wends its way down to this in StagePanel:
+
+        mRoot.computeTransformVO(w);
+
+where computeTransform is one of two keys ones in the VO interface:
+
+    /**
+     * Compute the transform for this VO only
+     */
+    void computeThisTransformVO(World world);
+
+    /**
+     * Compute the transform for this VO using computeThisTransformVO(), and do
+     * its kids, recursively, if it is alive
+     */
+    void computeTransformVO(World world);
+
+The VO interface also has drawThisVO/drawVO and
+updateThisVO/updateVO.  If we did such for FO does the transform stuff
+still happen?
+
+:21]
+[22:
+
+Thu Nov 12 14:25:30 2020 So we can have either
+
+ - No animation: Stuff just jumps from pre to post.  Alignment between
+   function space and panel space -- e.g., function value and y coord
+   -- is 'always' valid.
+
+ - Fake 'tweening' animation: In Finite2DSpace, in function space,
+   stuff just jumps from pre to post, but for display purposes FOs
+   interpolate individually between pre and post over several frames
+
+ - 'Fully incremental' updates: Things in function space somehow
+   update incrementally -- so it's possible, for example, for the
+   function value to be non-integral, even though it's formed from a
+   sum of integers, while that set of integers has recently changed.
+
+[23:
+
+Thu Nov 12 15:09:48 2020 I guess we have to be thinking either 'fake
+tweening' or nothing.  Fully incremental is just too confusing.
+
+Fake tweening notes:
+
+ - Display should 'always be falling' towards underlying 'live' values
+
+ - For SOSI purposes, in addition to the live value, we keep a
+   tweening counter and a .. start value?  And the start value resets
+   to the old live value, whenever the live value changes, with the
+   tween counter management as we're currently doing.
+
+ - We need to have 'display versions' of isVisible as well.  Tweening
+   that interpolates the foreground color from the 'real' fg color to
+   the 'real' bg color.  'Display isVisible' is true if
+   'function isVisible' is true and tween > 0, or if 'function
+   isVisible' is false and tween < max.
+
+:23]
+
+:22]
+[24:
+
+Mon Nov 16 13:55:26 2020 OK how can we get traction here?  I made some
+progress writing the talk but we have to get the demo s/w into shape
+where we can gather our riches.
+
+At the moment I'm on the laptop and so far can't figure out how to get
+the display scaling right grrr so I'm net heading backwards again.
+
+Current weirdness is displaying the hitmap looks plausible but
+displaying the jpanel is scaled too small and hits don't work on
+(though they do on the hitmap).
+[25:
+
+Tue Nov 17 02:27:56 2020 So apparently the problem was I did this:
+
+		AffineTransform old = g2d.getTransform();
+		g2d.setTransform(this.mHIP.getSpaceToPanel());
+
+instead of this
+
+		AffineTransform old = g2d.getTransform();
+		g2d.transform(this.mHIP.getSpaceToPanel());
+
+in (code called) from HipJPanel.paintComponent.  And apparently on the
+workstation it didn't matter, because 'old' was an identity transform,
+but here on the laptop, for some unknown but probably 'HiDPI'-related
+reason, it's a scale by 3 transform.  So the drawing came out 1/3
+size.
+
+But okay okay finally perhaps we can think about moving forward
+  again?[26:
+
+Tue Nov 17 09:54:44 2020 Let's try to get back to the fake-tweening
+stuff this morning.  So we kind of want to undo some of the
+incremental stuff we tried to do; how do we want to do that?  I guess
+let's go to FO and start on down.
+
+[27:
+
+Tue Nov 17 10:52:48 2020 Wondering if I want to reintroduce a 'Pose'
+(under some name) to encapsulate the 'tweenable' properties including
+x,y,w,h,fg,bg.  Then really most of FO would be in there.. except for
+the index..
+[28:
+
+Wed Nov 18 01:26:39 2020 OK, pretty far along on 'Body' as the 'new
+Pose'; it's starting to work.  Issues
+
+ - Not everything is encoded directly in the body.  In particular, the
+   underlying 'true' bg and fg colors are provided by overrides on
+   FO.getBackgroundColor(), but at present there's no way to announce
+   when the underlying true colors have changed, so the previous value
+   isn't captured and there's no tweening to the new color.[29:
+
+Wed Nov 18 02:17:02 2020 (Out of the shower) And it seems pretty clear
+we should just ditch getBackgroundColor() overrides and just provide
+setCurBackgroundColor() and setCurForegroundColor(), which the obvious
+tween triggering just the same as setCurX().[30:
+
+Wed Nov 18 02:30:53 2020 OK, that seems better.  Now the issue seems
+to be we're not pushing to the mPrevBody correctly, so we keep
+tweening from the initial state instead of the previous..[31:
+
+Wed Nov 18 10:28:02 2020 Hmm we've got a pretty basic thinko here?  In
+AFO.setCurBody(Body newbody), if anything has changed between newbody
+and mCurBody, we copy mCurBody to mPrevBody, and then copy newbody to
+mCurBody.  And set up mTweenIndex for animating from mPrevBody to
+mCurBody.
+
+But if we then call setCurBody() again -- as happens when we
+setCurForeground followed by setCurBackground on the same AFO -- that
+will recopy mCurBody to mPrevBody, which will overwrite the (say)
+mPrevBody.mFg color and the previously initiated animation will
+suddenly snap to the final result.
+
+Do we want to push individual values from mCurBody to mPrevBody,
+rather than copy the whole thing?  Or, do we want to push nothing from
+mCurBody to mPrevBody, but instead to incrementally change mPrevBody
+after we've displayed it?  We weren't doing that because we wanted to
+have a solid 'anchor' to SOSI from.   If, for example, we just did a
+fraction of the difference each display we'd get the SI but not the
+SO.
+
+Could we do it based on how long it's been since the cur value
+changed?  When a cur dimension changes, we check the mTweenIndex.  If
+it's length-1, that means prev has reached cur so the display is
+at rest, so we set the mTweenIndex to 0.  Otherwise we leave it as is?
+
+Then, on update, we have a revised table for how far we move in terms
+of %-of-difference between prev and cur, given that we're actually
+changing prev at display time.  How does that mapping work?
+
+Our current 'fixed ends' set of stops is 0% 5% 20% 50% 80% 95% 100%.
+
+So incrementally, the first change would remain 5%.  Then it's what
+%age of 95% gives us 20% of the original difference?
+
+original range 0..1
+
+prev  fulldelta  incrdelta  newprev
+0.00  0.05       0.05        0.05
+0.05  0.20       0.210526    0.20
+0.20  0.50       0.625000    0.50
+0.50  0.80       1.6         0.80
+0.80  0.95       1.1875      0.95
+0.95  1.00       1.052632    1.00
+
+[32:
+
+Wed Nov 18 11:02:12 2020 Does that make sense in general?  Need a term
+in there for the actual range, right?  And it's going to mess up if
+cur is changing, right?  Meaning the actual range is changing.
+
+I guess we want incrdelta expressed as a fraction of (cur-prev), not
+of prev?  So it'll converge on 1 and nothing higher.
+
+Like
+
+ prev = prev+(cur-prev)*frac[tweenIdx]
+
+so
+  deltaprev = (cur-prev)*frac[idx]
+
+  deltaprev/(cur-prev) = frac[idx]
+
+and we want the frac[]s that generate the original SOSI sequence.
+
+prev  fulldelta  deltaprev     frac[]      newprev
+0.00  0.05        0.05         0.05        0.05
+0.05  0.20        0.15         0.157895    0.20
+0.20  0.50        0.30         0.375000    0.50
+0.50  0.80        0.30         0.6         0.80
+0.80  0.95        0.15         0.75        0.95
+0.95  1.00        0.05         1.0         1.00
+
+[33:
+
+Wed Nov 18 12:06:11 2020 Well, that seems plausible?[34:
+
+Wed Nov 18 16:41:34 2020 OK, slept.  How do we implement this idea
+now?
+
+ - On the setCur* side of things, we do 'tween index maintenance' but
+   that's it, right?  We don't touch prevBody, we don't have to update
+   curbody globally, nothing, right?
+
+ - On the draw side, we may need a global pass to increment the
+   tweenindices cleanly.  Doing it during draw is risky because of
+   repainting due to damage?
+
+ - It seems like we could, if we wanted have an explicit Tweener
+   class, and attach different Tweeners to different Body parts.  That
+   way, we could, if we wanted, have like fg and bg colors (like for
+   bitvalues) tween rapidly -- 0,.5,1.0 -- while their positions take
+   longer to catch up.  Suggesting different levels of massiveness or
+   inertia among the changes.  So like BitBox colors are the fastest,
+   and BitBox alt positions could be medium, while the bitvectorh
+   moves the slowest?  Well that's pretty weird considering tht alt
+   positioning depends on the bitvectorh positioning.   Having the alt
+   get there first is a little messed up.
+
+So let's not go there, I think.  Let's say
+
+ - one tweener, explicit or implicit, for a single Body.
+
+ - ditch mPrevBody and make it mDisplayBody
+
+ - 
+
+:34]
+
+:33]
+
+:32]
+:31]
+
+:30]
+
+:29]
+
+ - There's a 'public void refresh()'
+
+:28]
+:27]
+
+:26]
+
+:25]
+:24]
+[35:
+
+Thu Nov 19 11:08:51 2020 OK so here we are again closing in on moving
+the flag, but we're pretty close (I claim) on the latest N+nth
+redo of the code.  Now we'd like to see the processing loop that will
+explicitly advance the tweening, and then see where we really are.[36:
+
+Thu Nov 19 11:12:24 2020 Oh yeah one leftover issue was FO.refresh(),
+which previously had been used to climb the FO.getParent() links to
+the root and trigger a redraw after something changed.  The plan now
+is to go with 'regular' redraws whenever anything (bottom-up) changed
+or not -- to settle the tweening -- so refresh() is no longer needed.
+
+I wonder if we should have a cycle counter and do the tweening
+relative to a counter sample rather than setting an index to zero.
+That would avoid worrying about overrunning the tween index and would
+make it easier to have different tweeners running at different
+speeds.  Everybody would need to have a reference to the counter
+though..  Could it be static in Tweener?[37:
+
+Thu Nov 19 11:31:45 2020 update loop dammit stay on the loop.  We're
+in HIP.cycle() for that.  Right now it's something like:
+
+   this.getRoot().step();     
+   this.getRoot().refresh();
+
+so.. wait: Is there any purpose to a full recursive .step() ASIDE from
+redoing the tweening?  We have external events causing changes in
+curBody, which will also adjust tweening status as a side effect --
+whether those external events are user input or timer-driven -- and
+then we need to recompute displayBody and then display it.
+
+But I guess we do want to have the ability for individual FOs to
+trigger changes without either user input or a single global timer, so
+that's why we want the recursive update pass.
+
+So in VO land it's:
+
+            for (Stage s : this) s.transformStage(this);
+            for (Stage s : this) s.paintStage(this);
+            for (Stage s : this) s.updateStage(this);  
+
+where transformStage would include computing our mDisplayedBody,
+paintStage would do the FO.draw(HyperspaceRenderer) calls, and
+updateStage would do the FO.step()/stepKids() recursion.  [38:
+
+Thu Nov 19 12:32:33 2020 And it ticks the tween clock?  No let's have
+HIP.cycle do that globally, and pass HIP down to everybody.
+
+:38]
+
+And all of that happens in a Swing timer actionPerformed callback, so
+user events occur after an updateStage completes and before the next
+transformStage starts.
+
+:37]
+
+:36]
+
+:35]
+[39:
+
+Thu Nov 19 13:47:02 2020 OK so recomputing the displayed body works
+how exactly?
+
+I guess at the moment AFO.transform(HIP hip) should default to
+something like:
+
+   public void transform(HIP hip) {
+     mTweener.tweenBodyInPlace(mDisplayedBody,mCurBody,mTweenIndex);
+   }
+
+and that would do it for (all) the simple cases?
+
+:39]
+[40:
+
+Sat Nov 21 16:08:31 2020 So, current issues:
+
+ - Seems like we need transformSelf/transformKids, or some other way
+   to recurse for the transformation.  Right now only the Collector is
+   getting transformed, and it doesn't go anywhere.
+
+ - If we're going to have multiple recursive passes, we really want to
+   factor the recursion out from the details.  Want some kind of kid
+   iterator to present to AFO or something like that.
+
+[41:
+
+Sun Nov 22 00:24:19 2020 OK gobdommed get this running NOW NOW NOW
+We're at debugging why our doTree recursion methods aren't getting the
+bitvectorh spread out.
+
+Q&A:
+
+Q: Which code positions the contained BitBoxes?
+
+[42:
+
+Sun Nov 22 00:27:04 2020
+
+A: BitVectorH.resize()?   Let's watch it.[43:
+
+Sun Nov 22 00:28:46 2020
+
+A: No, BitVectorH.reconfigureX()?
+
+[44:
+
+Sun Nov 22 00:34:09 2020 Yes, we see BitBox.mCurBody bounds being
+changed.  But nothing on the screen has been moving.
+
+Q: Where does the display body 'fall' toward the current body?
+A: Supposedly via HIP.mTransformOp -> FO.transform(HIP)
+
+and then -> AFO.transform(HIP) -> Tweener.tweenBodyInPlace().
+
+Let's see that, for bitbox 1 and/or its alt, say.[45:
+
+Sun Nov 22 00:41:59 2020 Bleh we're racing; (because we're debugging
+anyway,) our timer thread is getting to HIP.cycle() before HIP.mRoot
+is set up.
+
+Which happens.. in HIP.configure(Rect2D)
+
+[46:
+
+Sun Nov 22 00:46:52 2020 Which happens via
+HIPJPanel.componentResized(..)
+
+So maybe it's not COMPLETELY horrible to vacate HIP.cycle until
+getRoot() is non-null?[47:
+
+Sun Nov 22 01:01:09 2020 So, I'm seeing Tweener.tweenBodyInPlace
+plausibly modifying AFO.mDisplayedBody.  Where should that be getting
+drawn?
+
+[48:
+
+Sun Nov 22 01:33:53 2020 GAAAAAAAAAAAAAAAAAAAAAH.
+
+So the reason nothing was working was because our drawing routine was
+carefully recursing through the whole tree:
+
+	private void doDraw() { // Draw them
+		doTree(this.getRoot(),mDrawOp); 
+	}	
+
+..when what it wanted to be was: 
+
+	private void doDraw() { // Draw them
+		this.getJPanel().repaint();
+        }
+
+
+
+Now things are moving all over the place most plausibly.  They're
+still not quite right -- the alts aren't quite centered -- but
+
+GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH
+
+:48]
+
+:47]
+
+:46]
+
+:45]
+
+:44]
+
+:43]
+
+:42]
+
+:41]
+
+:40]
+[49:
+
+Sun Nov 22 01:53:34 2020 OK, now we have VRuler fading out as well as
+in, because VRuler.draw(..) now checking if tweening is active:
+
+		if (!this.isVisible() && !this.isTweening()) return;
+
+Let's fix the alt centering.  We're getting close to moving forwards,
+here, right?[50:
+
+Sun Nov 22 02:20:07 2020 OK, how do the alts get x-positioned?
+BitVectorH does it?[51:
+
+Sun Nov 22 02:24:48 2020 Yeah, BitVectorH.reconfigureX().  Fixed.
+
+Now what?
+
+TODO:
+
+ - Reestablish full-screen.  Right now we have a border?[52:
+
+Sun Nov 22 02:26:27 2020 Oh, the problem is we have our wm menubar on
+the wrong screen?[53:
+
+Sun Nov 22 02:27:14 2020 Yes, but then our display follows it to the
+presenter screen.[54:
+
+Sun Nov 22 03:09:34 2020 OK have punched up a variety of stuff.  Tried
+to get the active status of bitbox alts to tween in and out but it was
+a pain and I backed out of that.
+
+Have the display now left-justified on the screen as we want it.
+
+:54]
+
+:53]
+
+:52]
+
+:51]
+
+:50]
+
+:49]
+[55: 
+
+Sun Nov 22 03:39:21 2020 Come on let's move on to content.  Give me
+some
+
+TODO
+
+ - Make a state randomizer, put it on 'R'
+
+ - Somehow make a hillclimb process, put it on 'h'
+
+ - Make a second test function, create some way to switch or progress
+   between functions.
+
+[56:
+
+Sun Nov 22 03:51:09 2020 Actually, first, commit all this stuff.
+
+:56]
+
+:55]

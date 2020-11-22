@@ -3,40 +3,61 @@ package com.putable.hyperspace.core;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.Random;
+
+import com.putable.hyperspace.interfaces.FOEventHandler;
 
 /**
  * OK, this demo spike wants to have a 9 bit vector centered in the given panel, and taking up 2/3s of the panel widith 
  * @author ackley
  *
  */
-public class HIPSpike10 extends HIP {
+public class HIPSpike13 extends HIP {
 
 	@Override
 	public Rectangle2D getDiagramBounds() {
-//		return new Rectangle2D.Double(-5_000_000, -5_000_000, 10_000_000, 10_000_000);
-		return new Rectangle2D.Double(-20, -20, 100, 100);
+		return new Rectangle2D.Double(-5, -6, 24, 16);
 	}
 
 	@Override
 	public FO buildDiagram() {
-		Collector root = new Collector(this);
+		Collector coll = new Collector(this) {
+/*
+			@Override
+			public void refresh() {
+				super.refresh();
+				HIPSpike13.this.getJPanel().repaint();
+			}
+*/
+		};
 
 		//A RULER
-		VRuler vr = new VRuler(this);
-		vr.setCurX(-10);
-		root.addChild(vr);
+		final VRuler vr = new VRuler(this);
+		vr.setFontSize(0.72);
+		vr.setCurX(-2);
+		vr.setCenterOriginY(0.0);
+		vr.setYTicDistance(2.0);
+		vr.setYTics(5);
+		coll.addChild(vr);
+		coll.addFOEventHandler(new FOEventHandler() {
+			@Override
+			public boolean handleKey(FOEventKey foek) {
+				if (foek.keyTyped('v') != null) {
+					vr.setIsVisible(!vr.isVisible());
+					return true;
+				}
+				return false;
+			}
+		});
 		
-		//THE BITVECTOR
-		BitVectorH bvh =new BitVectorH(this,9,8);
-		Random random = new Random();
-		for (BitBox bb : bvh) {
-			bb.setValue(BitValue.random(random, .5, true));
-			bb.setCurY(0);
-			bb.getAlternative().setCurY(random.nextInt(80)-40);
-		}
-		root.addChild(bvh);
-		return root;
+		
+		//THE BITVECTOR FUNCTION
+		final int BITS = 9;
+		final double SIDE = 1;
+		BVHFunction bvhf = new SimpleMatch(this, BITS, SIDE, BITS);
+		bvhf.setYFromScore();
+		bvhf.evaluateAlternatives();
+		coll.addChild(bvhf);
+		return coll;
 	}
 
 	@Override

@@ -1,6 +1,5 @@
 package com.putable.hyperspace.core;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -9,17 +8,13 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Random;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -41,7 +36,6 @@ public class HyperspaceInteractionPanel extends JPanel {
 	    	int x = e.getX();
 	        int y = e.getY();
 	        Point2D pt = new Point2D.Double(x, y);
-	        Graphics2D lastG2d = hip.mSHR.getG2d();
 	        if (hip.mLastAT != null) {
 	        	try {
 	        		hip.mLastAT.inverseTransform(pt, pt);
@@ -63,7 +57,6 @@ public class HyperspaceInteractionPanel extends JPanel {
 	    }
 	    @Override
 	    public void mouseDragged(MouseEvent e) {
-	    	HyperspaceInteractionPanel hip = HyperspaceInteractionPanel.this;
 	        int x = e.getX();
 	        int y = e.getY();
 	        if (mDragStart == null) return;
@@ -173,11 +166,11 @@ public class HyperspaceInteractionPanel extends JPanel {
 		System.out.println(mf);
 */
 	}
-
+/*
 	private void addFO(FO fo) {
 		this.mFOs.put(fo.getIndex(), fo);
 	}
-
+*/
 	private void paintFOs() {
 		Graphics2D g2d = mSHR.getG2d();
 		AffineTransform old = g2d.getTransform();

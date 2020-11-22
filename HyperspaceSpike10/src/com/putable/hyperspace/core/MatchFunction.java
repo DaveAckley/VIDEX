@@ -1,10 +1,24 @@
 package com.putable.hyperspace.core;
 
+import java.util.Iterator;
+
 public class MatchFunction implements Function {
 	
 	private double [] mWeights;
 	private double mAbsSum;
-	
+	public MatchFunction(int dims) {
+		this(dims,new Iterable<Double>() {
+			@Override
+			public Iterator<Double> iterator() {
+				return new Iterator<Double>() {
+					@Override
+					public boolean hasNext() { return true;	}
+					@Override
+					public Double next() { return 1.0; }
+				};
+			}
+		});
+	}
 	public MatchFunction(int dims, Iterable<Double> itr) {
 		mWeights = new double[dims];
 		int i = 0;

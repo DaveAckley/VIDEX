@@ -2,7 +2,6 @@ package com.putable.hyperspace.core;
 
 import java.awt.Dimension;
 import java.awt.DisplayMode;
-import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
@@ -15,6 +14,9 @@ import javax.swing.JFrame;
 public class Spike14 {
 	private static final int DESIRED_SCREEN = 1;
 	private static class SpikeFrame extends JFrame implements KeyListener {
+	
+		private static final long serialVersionUID = 1L;
+
 		public SpikeFrame(String s) {
 			super(s);
 			addKeyListener(this);
@@ -49,8 +51,8 @@ public class Spike14 {
 		GraphicsDevice[] gd = ge.getScreenDevices();
 		for (GraphicsDevice gc : gd) {
 			DisplayMode dm = gc.getDisplayMode();
+			/*
 			DisplayMode[] dms = gc.getDisplayModes();
-/*
 			for (DisplayMode dmm : dms) {
 				System.out.println("DMMMMSS "+dmm.getWidth()+" "+dmm.getHeight());
 			}
@@ -68,8 +70,8 @@ public class Spike14 {
 		} else {
 			throw new RuntimeException( "No Screens Found" );
 		}
+		/*
 		GraphicsConfiguration [] gcs  = thegd.getConfigurations();
-/*
 		for (GraphicsConfiguration gc : gcs) {
 			System.out.println(gc + " bd " + gc.getBounds());
 		}

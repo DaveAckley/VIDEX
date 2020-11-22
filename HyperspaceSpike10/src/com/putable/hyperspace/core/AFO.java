@@ -2,23 +2,154 @@ package com.putable.hyperspace.core;
 
 import java.awt.Color;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 
+import com.putable.hyperspace.interfaces.Body;
 import com.putable.hyperspace.interfaces.Finite2DSpace;
 
 public abstract class AFO implements FO {
-	private final Finite2DSpace mSpace;
-	public Finite2DSpace getSpace() { return mSpace; }
+	protected final Finite2DSpace mSpace;
+
+	public Iterator<FO> noKids() {
+		return new Iterator<FO>() {
+
+			@Override
+			public boolean hasNext() {
+				return false;
+			}
+
+			@Override
+			public FO next() {
+				throw new ArrayIndexOutOfBoundsException();
+			}
+		};
+	}
 	
-	private int mX;
-	private int mY;
-	private int mWidth;
-	private int mHeight;
+	public Finite2DSpace getSpace() { return mSpace; }
+
+	/*public abstract void stepKids(HIP hip) ;*/
+
+	@Override
+	public boolean handle(FOEvent foe) {
+		System.out.println("handle "+foe);
+		return false;
+	}
+	private StandardBody mCurBody = new StandardBody();
+	private StandardBody mDisplayedBody = new StandardBody();
+	
+	@Override
+	public Body getCurBody() {
+		return this.mCurBody;
+	}
+
+	@Override
+	public Body getDisplayedBody() {
+		return mDisplayedBody;
+	}
+
+	private int mTweenIndex = 0;
+	private Tweener mTweener = Tweener.getStandard();
+	public boolean isTweening() {
+		return mTweener.isTweenStep(mTweenIndex);
+	}
+	public void retween() {
+		mTweenIndex = mTweener.retweenOnChange(mTweenIndex);
+	}
+	
+	@Override
+	public void transform(HIP hip) {
+		this.mTweener.tweenBodyInPlace(this.getDisplayedBody(), this.getCurBody(), mTweenIndex);
+		++this.mTweenIndex;
+	}
+
+	public void setCurY(double y) {
+		if (this.getCurBody().getY() != y) {
+			retween();
+			this.getCurBody().setY(y);
+		}
+			
+	}
+	public void setCurX(double x) {
+		if (this.getCurBody().getX() != x) {
+			retween();
+			this.getCurBody().setX(x);
+		}
+	}
+	public void setCurWidth(double w) {
+		if (this.getCurBody().getWidth() != w) {
+			retween();
+			this.getCurBody().setWidth(w);
+		}
+	}
+	public void setCurHeight(double h) {
+		if (this.getCurBody().getHeight() != h) {
+			retween();
+			this.getCurBody().setHeight(h);
+		}
+	}
+	
+	public void setCurBackgroundColor(Color col) {
+		if (!this.getCurBody().getBg().equals(col)) {
+			retween();
+			this.getCurBody().setBg(col);
+		}
+	}
+	public void setCurForegroundColor(Color col) {
+		if (!this.getCurBody().getFg().equals(col)) {
+			retween();
+			this.getCurBody().setFg(col);
+		}
+	}
+	public double getCurWidth() {
+		return getCurBody().getWidth();
+	}
+	public double getCurHeight() {
+		return getCurBody().getHeight();
+	}
+	public double getCurX() {
+		return getCurBody().getX();
+	}
+	public double getCurY() {
+		return getCurBody().getY();
+	}
+	public Color getCurBackgroundColor() {
+		return getCurBody().getBg();
+	}
+	public Color getCurForegroundColor() {
+		return getCurBody().getFg();
+	}
+
+	public void step(HIP hip) {
+		/* By default do nothing */
+	}
+
 	private int mIndex;
-	private Color mRealBg;
-	private Color mRealFg;
 	private FO mParent = null;
+	private boolean mIsActive = true;
+	private boolean mIsVisible = true;
+	
+	@Override
+	public boolean isActive() {
+		return mIsActive;
+	}
+
+	public void setIsActive(boolean mIsActive) {
+		if (this.mIsActive != mIsActive) {
+			this.mIsActive = mIsActive;
+			this.retween();
+		}
+	}
+
+	@Override
+	public boolean isVisible() {
+		return mIsVisible;
+	}
+
+	public void setIsVisible(boolean mIsVisible) {
+		if (this.mIsVisible != mIsVisible) {
+			this.mIsVisible = mIsVisible;
+			this.retween();
+		}
+	}
 
 	public void setParent(FO parent) {
 		if ((this.getParent() == null) == (parent == null))
@@ -37,56 +168,9 @@ public abstract class AFO implements FO {
 	
 	@Override
 	public int getIndex() { return mIndex; }
-	
-	@Override
-	public Color getForegroundColor() { return mRealFg; }
-	@Override
-	public Color getBackgroundColor() { return mRealBg; }
-	
-	public void setForegroundColor(Color col) {
-		mRealFg = col;
-	}
-
-	public void setBackgroundColor(Color col) {
-		mRealBg = col;
-	}
 
 	public int getHitmapIndex() { 
 		return mIndex; 
 	}
-	public void setPosition(int x, int y) {
-		this.setX(x);
-		this.setY(y);
-	}
 
-	@Override
-	public int getX() {
-		return mX;
-	}
-	@Override
-	public int getY() {
-		return mY;
-	}
-	@Override
-	public int getWidth() {
-		return mWidth;
-	}
-	@Override
-	public int getHeight() {
-		return mHeight;
-	}
-
-	public void setX(int mX) {
-		this.mX = mX;
-	}
-	public void setY(int mY) {
-		this.mY = mY;
-	}
-	public void setWidth(int mWidth) {
-		this.mWidth = mWidth;
-	}
-	public void setHeight(int mHeight) {
-		this.mHeight = mHeight;
-	}
-	
 }

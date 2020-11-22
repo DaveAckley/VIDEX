@@ -14,7 +14,7 @@ public class StandardHyperspaceRenderer implements HyperspaceRenderer {
 	}
 
 	public void setG2d(Graphics2D mG2d) {
-		this.mG2d = mG2d;
+		this.mG2d = (Graphics2D) mG2d.create();
 	}
 
 	@Override
@@ -51,13 +51,13 @@ public class StandardHyperspaceRenderer implements HyperspaceRenderer {
 	@Override
 	public Color getFg(FO fo) {
 		if (this.mInHitmap) return new Color(fo.getIndex(),false);
-		return fo.getForegroundColor();
+		return fo.getDisplayedBody().getFg();
 	}
 
 	@Override
 	public Color getBg(FO fo) {
 		if (this.mInHitmap) return new Color(fo.getIndex(),false);
-		return fo.getBackgroundColor();
+		return fo.getDisplayedBody().getBg();
 	}
 
 }
